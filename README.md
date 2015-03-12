@@ -1,11 +1,11 @@
 [Smap Webforms](http://www.smap.com.au) 
 ======
 
-Webforms is a fork of Enketo Smart Paper (https://enketo.org) that has been modified to work with a Smap Server.
+Webforms is based on Enketo Smart Paper (https://enketo.org) and has been extensively modified to work with a Smap Server. The PHP code from from Enketo has been removed and only the Javascript is included.
 
 Follow the latest news about Smap on our [blog](http://blog.smap.com.au) and on twitter [@dgmsot](https://twitter.com/dgmsot).
 
-Webforms is not intended to maintain any alignment with Enketo Smart Paper and will be progressively re-written.  However it uses forks of sub projects that we will contribute to:
+WebformsClient uses forks of sub projects that we will contribute to:
 * [Enketo Core](https://github.com/nap2000/enketo-core) which we contribute back to the Enketo community.
 * [Enketo XSLT](https://github.com/MartijnR/enketo-xslt) - used inside this repo
 
