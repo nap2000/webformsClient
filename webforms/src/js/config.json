@@ -1,0 +1,27 @@
+{
+    "widgets": [
+        "enketo-widget/note/notewidget",
+        "enketo-widget/select-desktop/selectpicker",
+        "enketo-widget/select-mobile/selectpicker",
+        "enketo-widget/geo/geopicker",
+        "enketo-widget/table/tablewidget",
+        "enketo-widget/radio/radiopicker",
+        "enketo-widget/date/datepicker-extended",
+        "enketo-widget/time/timepicker-extended",
+        "enketo-widget/datetime/datetimepicker-extended",
+        "enketo-widget/mediagrid/mediagridpicker",
+        "enketo-widget/file/filepicker",
+        "enketo-widget/select-likert/likertitem",
+        "enketo-widget/distress/distresspicker",
+        "enketo-widget/trigger/triggerwidget"
+    ],
+    "maps": [ {
+        "tiles": [ "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" ],
+        "name": "streets",
+        "attribution": "Map data © <a href=\"http://openstreetmap.org\">OpenStreetMap</a> contributors"
+    }, {
+        "tiles": "GOOGLE_SATELLITE",
+        "name": "satellite"
+    } ],
+    "googleApiKey": ""
+}

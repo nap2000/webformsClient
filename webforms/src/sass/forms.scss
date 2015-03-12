@@ -1,0 +1,28 @@
+@import "component/font";
+
+@import "../../public/lib/enketo-core/src/sass/core/variables";
+@import "component/variables";
+
+@import "../../public/lib/enketo-core/src/sass/core/mixins";
+@import "component/mixins";
+
+@import "component/common";
+@import "component/menu";
+@import "component/layout";
+
+#refresh-list {
+    float: right;
+    margin: -2px -14px 0 14px;
+    width: 60px;
+}
+
+#form-list {
+    margin-top: -10px;
+}
+
+.navbar-nav.navbar-right:last-child .popover, .navbar-toggle  ~ .popover {
+    margin-right: 8px;
+    &.bottom > .arrow {
+    	//margin-left: -3px;
+    }
+}

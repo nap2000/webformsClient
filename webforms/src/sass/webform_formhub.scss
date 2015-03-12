@@ -1,0 +1,23 @@
+// fonts
+@import "component/font";
+
+// variables, in the right order
+@import "../../public/lib/enketo-core/src/sass/core/variables";
+@import "../../public/lib/enketo-core/src/sass/formhub/variables";
+@import "component/variables";
+
+// mixins, in the right order
+@import "../../public/lib/enketo-core/src/sass/core/mixins";
+@import "../../public/lib/enketo-core/src/sass/formhub/mixins";
+@import "component/mixins";
+
+// layout
+@import "../../public/lib/enketo-core/src/sass/core/layout";
+@import "component/layout_webform";
+
+// components
+@import "component/common";
+@import "component/side-slider";
+@import "component/form_formhub";
+@import "component/form_header";
+@import "component/form_footer";
