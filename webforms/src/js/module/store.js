@@ -17,7 +17,7 @@
 define( [ 'jquery', 'enketo-js/extend' ], function( $ ) {
     "use strict";
 
-    var RESERVED_KEYS = [ '__settings', 'null', '__history', 'Firebug', 'undefined', '__bookmark', '__counter', '__current_server', '__loadLog', '__writetest', '__maxSize' ],
+    var RESERVED_KEYS = [ 'user_locale', '__settings', 'null', '__history', 'Firebug', 'undefined', '__bookmark', '__counter', '__current_server', '__loadLog', '__writetest', '__maxSize' ],
         localStorage = window.localStorage;
 
     // Could be replaced by Modernizr function if Modernizr remains used in final version
@@ -112,6 +112,7 @@ define( [ 'jquery', 'enketo-js/extend' ], function( $ ) {
     function getRecord( key ) {
         var record;
         try {
+            var x = localStorage.getItem( key );
             record = JSON.parse( localStorage.getItem( key ) );
             return record;
         } catch ( e ) {
@@ -186,11 +187,11 @@ define( [ 'jquery', 'enketo-js/extend' ], function( $ ) {
 
         for ( i = 0; i < localStorage.length; i++ ) {
             key = localStorage.key( i );
-            //console.debug('found record with with key:'+key);
-            record = getRecord( key );
-            // get record - all non-reserved keys contain survey data
             if ( !isReservedKey( key ) ) {
-                //console.debug('record with key: '+key+' is survey data');
+
+                // get record - all non-reserved keys contain survey data
+                record = getRecord( key );
+
                 try {
                     record.key = key;
                     //=== true comparison breaks in Google Closure compiler.

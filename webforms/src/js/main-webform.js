@@ -16,8 +16,8 @@ require( [ 'require-config' ], function( rc ) {
             }
 
             $( document ).ready( function() {
-                data.instanceStrToEdit = data.instanceStrToEdit || null; // Existing data
-                controller.init( 'form.or:eq(0)', data.modelStr, data.instanceStrToEdit, {
+                surveyData.instanceData = surveyData.instanceData || null; // Existing data
+                controller.init( 'form.or:eq(0)', {
                     recordStore: recordStore,
                     fileStore: fileStore,
                     submitInterval: 300 * 1000

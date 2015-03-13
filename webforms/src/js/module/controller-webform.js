@@ -21,15 +21,17 @@
 define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormModel', 'file-saver', 'Blob', 'vkbeautify', 'jquery', 'bootstrap' ],
     function( gui, connection, settings, Form, FormModel, saveAs, Blob, vkbeautify, $ ) {
         "use strict";
-        var form, $form, $formprogress, formSelector, defaultModelStr, store, fileManager;
+        var form, $form, $formprogress, formSelector, defaultSurveyData, store, fileManager;
 
-        function init( selector, modelStr, instanceStrToEdit, options ) {
+        function init( selector, options ) {
             var loadErrors, purpose;
 
             //formSelector = selector;
-            defaultModelStr = modelStr;
+            defaultSurveyData = {};
+            defaultSurveyData.modelStr = surveyData.modelStr;
+
             options = options || {};
-            instanceStrToEdit = instanceStrToEdit || null;
+            surveyData.instanceStrToEdit = surveyData.instanceStrToEdit || null;
             store = options.recordStore || null;
             fileManager = ( options.fileStore && options.fileStore.isSupported() ) ? options.fileStore : null;
 
@@ -41,12 +43,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             }
 
             formSelector = 'form.or:eq(0)';
-            form = new Form( formSelector, data );
-            //form = new Form( formSelector, defaultModelStr, instanceStrToEdit );
-
-            // DEBUG
-            //window.form = form;
-            //window.gui = gui;
+            form = new Form( formSelector, surveyData );
 
             //initialize form and check for load errors
             var loadErrors = form.init();
@@ -98,7 +95,6 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             //valueFirst = /**@type {string} */$('#saved-forms option:first').val();
             //console.debug('first form is '+valueFirst);
             //gui.pages.get('records').find('#records-saved').val(valueFirst);
-            console.debug( 'editstatus: ' + form.getEditStatus() );
             if ( !confirmed && form.getEditStatus() ) {
                 message = 'There are unsaved changes, would you like to continue <strong>without</strong> saving those?';
                 choices = {
@@ -111,7 +107,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                 setDraftStatus( false );
                 updateActiveRecord( null );
                 form.resetView();
-                form = new Form( 'form.or:eq(0)', defaultModelStr );
+                form = new Form( 'form.or:eq(0)', defaultSurveyData );
                 //DEBUG
                 window.form = form;
                 form.init();
