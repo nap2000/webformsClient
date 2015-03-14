@@ -224,7 +224,8 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             } else {
                 record = {
                     'draft': draft,
-                    'data': form.getDataStr( true, true )
+                    'data': form.getDataStr( true, true ),
+                    'media': getMedia() // Gets the media from the current form
                 };
                 overwrite = form.getRecordName() === recordName;
                 saveResult = store.setRecord( recordName, record, true, overwrite, form.getRecordName() );
@@ -319,7 +320,8 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             if ( !record.draft ) {
                 prepareFormDataArray( {
                     key: recordName,
-                    data: record.data
+                    data: record.data,
+                    media: record.media // smap
                 }, {
                     success: function( formDataArr ) {
                         connection.uploadRecords( formDataArr, true );
@@ -358,24 +360,51 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             }
         }
 
+        /*
+         * Get an array of the media dataUrls along with the filenames from the current form
+         */
+        function getMedia() {
+            var $media,
+                $fp,
+                $filePicker,
+                name,
+                dataUrl,
+                mediaArray = [];
+
+            $( '[type="file"]' ).each( function() {
+                $media = $( this );
+                $filePicker = $media.next( '.file-picker' );
+                $ff = $filePicker.find( '.fake-file-input' );
+                $fp = $filePicker.find( '.file-preview > img' );
+                if ( $ff && $fp && $fp.attr( "src" ) ) {
+                    mediaArray.push( {
+                        name: $ff.text(),
+                        dataUrl: $fp.attr( "src" )
+                    } );
+                }
+            } );
+
+            console.log( "Returning media" );
+            console.log( mediaArray );
+            return mediaArray;
+        }
+
         /**
          * Asynchronous function that builds up a form data array including media files
          * @param { { name: string, data: string } } record[ description ]
          * @param {{success: Function, error: Function}} callbacks
          */
-
         function prepareFormDataArray( record, callbacks ) {
             var j, k, l, xmlData, formData, model, instanceID, $fileNodes, fileIndex, fileO, recordPrepped,
                 count = 0,
                 sizes = [],
-                failedFiles = [],
                 files = [],
                 batches = [];
 
             model = new FormModel( record.data );
             instanceID = model.getInstanceID();
             // ignore files if there is no fileManager (possible when editing a record that has files)
-            $fileNodes = ( fileManager ) ? model.$.find( '[type="file"]' ).removeAttr( 'type' ) : [];
+            //$fileNodes = ( fileManager ) ? model.$.find( '[type="file"]' ).removeAttr( 'type' ) : [];
             xmlData = model.getStr( true, true );
 
             function basicRecordPrepped( batchesLength, batchIndex ) {
@@ -390,7 +419,15 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                 };
             }
 
-            function gatherFiles() {
+            function getFileSizes() {
+                var i
+                files = record.media;
+
+                for ( i = 0; i < files.length; i++ ) {
+                    count++;
+                    sizes.push( files[ i ].dataUrl.length )
+                }
+                /*
                 $fileNodes.each( function() {
                     fileO = {
                         newName: $( this ).nodeName,
@@ -419,32 +456,30 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                             }
                         }
                     } );
-                } );
+                    */
             }
 
             function distributeFiles() {
                 var maxSize = connection.getMaxSubmissionSize();
                 if ( files.length > 0 ) {
                     batches = divideIntoBatches( sizes, maxSize );
-                    console.debug( 'splitting record into ' + batches.length + ' batches to reduce submission size ', batches );
+                    console.log( 'splitting record into ' + batches.length + ' batches to reduce submission size ', batches );
                     for ( k = 0; k < batches.length; k++ ) {
                         recordPrepped = basicRecordPrepped( batches.length, k );
                         for ( l = 0; l < batches[ k ].length; l++ ) {
                             fileIndex = batches[ k ][ l ];
-                            //console.log( 'adding file: ', files[ fileIndex ] );
-                            recordPrepped.formData.append( files[ fileIndex ].newName + '[]', files[ fileIndex ].file );
+                            recordPrepped.formData.append( files[ fileIndex ].name, files[ fileIndex ].dataUrl );
                         }
-                        //console.log( 'returning record with formdata : ', recordPrepped );
                         callbacks.success( recordPrepped );
                     }
                 } else {
                     recordPrepped = basicRecordPrepped( 1, 0 );
-                    //console.log( 'sending submission without files', recordPrepped );
                     callbacks.success( recordPrepped );
                 }
                 // showErrors();		smap allow files to fail
             }
 
+            /*
             function showErrors() {
                 if ( failedFiles.length > 0 ) {
                     gui.alert( '<p>The following media files could not be retrieved: ' + failedFiles.join( ', ' ) + '. ' +
@@ -454,12 +489,17 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                         'Experimental feature failed' );
                 }
             }
+            */
 
+            getFileSizes();
+            distributeFiles();
+            /*
             if ( !fileManager || $fileNodes.length === 0 ) {
                 distributeFiles();
             } else {
                 gatherFiles();
             }
+            */
         }
 
 

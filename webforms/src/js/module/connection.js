@@ -464,7 +464,7 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
     function _setMaxSubmissionSize() {
         var maxSize,
             storedMaxSize = store.getRecord( '__maxSize' ),
-            defaultMaxSize = 5000000,
+            defaultMaxSize = 10 * 1024 * 1024,
             absoluteMaxSize = 100 * 1024 * 1024;
         if ( typeof maxSubmissionSize == 'undefined' ) {
             maxSubmissionSize = storedMaxSize || defaultMaxSize;
