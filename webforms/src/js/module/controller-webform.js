@@ -251,28 +251,23 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             }
         }
 
-        /**
-         * Used to submit a form with data that was loaded by POST. This function does not save the record in localStorage
-         * and is not used in offline-capable views.
+        /*
+         * Submit the data directly without using local storage
          */
-
-        function submitEditedRecord() {
-            var name, record, saveResult, redirect, beforeMsg, callbacks;
+        function submitEditedRecord( autoClose ) {
+            var name, record, saveResult, redirect, beforeMsg, callbacks, $alert;
             $form.trigger( 'beforesave' );
             if ( !form.isValid() ) {
                 gui.alert( 'Form contains errors <br/>(please see fields marked in red)' );
                 return;
             }
-            redirect = ( typeof settings !== 'undefined' && typeof settings[ 'returnURL' ] !== 'undefined' && settings[ 'returnURL' ] ) ? true : false;
-            beforeMsg = ( redirect ) ? 'You will be automatically redirected after submission. ' : '';
 
-            gui.alert( beforeMsg + '<br />' +
-                '<progress style="text-align: center;"/>', 'Submitting...', 'info' );
-            //name = (Math.floor(Math.random()*100001)).toString();
-            //console.debug('temporary record name: '+name);
+            gui.alert( '<progress style="text-align: center;"/>', 'Submitting...', 'info' );
+
             record = {
                 'key': 'iframe_record',
-                'data': form.getDataStr( true, true )
+                'data': form.getDataStr( true, true ),
+                'media': getMedia()
             };
 
             callbacks = {
@@ -280,20 +275,14 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     gui.alert( 'Please try submitting again.', 'Submission Failed' );
                 },
                 success: function() {
-                    if ( redirect ) {
-                        gui.alert( 'You will now be redirected.', 'Submission Successful!', 'success' );
-                        setTimeout( function() {
-                            location.href = settings.returnURL;
-                        }, 1500 );
-                    }
-                    //also use for iframed forms
-                    else {
-                        gui.alert( 'This form will now be closed!', 'Submission Successful!', 'success' ); // smap changed text
-                        // Smap for these single submit forms without a return url just close the window
+                    if ( autoClose ) {
+                        gui.alert( 'This form will now be closed!', 'Submission Successful!', 'success' );
                         setTimeout( function() {
                             window.open( '', '_self' ).close();
                         }, 1500 );
-                        //resetForm( true );
+                    } else {
+                        resetForm( true );
+                        gui.alert( 'Success', 'Submission Successful!', 'success' );
                     }
                 },
                 complete: function() {}
@@ -311,6 +300,13 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     }
                 }
             );
+        }
+
+        /*
+         * Return true if this form can be saved and submitted asynchronously
+         */
+        function canSaveRecord() {
+            return false; // TODO check for presence of media and ability to use chrome filesystem API or cordova
         }
 
         function submitOneForced( recordName, record ) {
@@ -365,6 +361,9 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
          */
         function getMedia() {
             var $media,
+                elem,
+                count,
+                i,
                 $fp,
                 $filePicker,
                 name,
@@ -373,6 +372,15 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 
             $( '[type="file"]' ).each( function() {
                 $media = $( this );
+                elem = $media[ 0 ];
+
+                for ( i = 0; i < elem.files.length; i++ ) {
+                    mediaArray.push( {
+                        name: elem.files[ i ].name,
+                        file: elem.files[ i ]
+                    } );
+                }
+                /*
                 $filePicker = $media.next( '.file-picker' );
                 $ff = $filePicker.find( '.fake-file-input' );
                 $fp = $filePicker.find( '.file-preview > img' );
@@ -382,6 +390,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                         dataUrl: $fp.attr( "src" )
                     } );
                 }
+                */
             } );
 
             console.log( "Returning media" );
@@ -421,54 +430,27 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 
             function getFileSizes() {
                 var i
-                files = record.media;
+                media = record.media;
 
-                for ( i = 0; i < files.length; i++ ) {
-                    count++;
-                    sizes.push( files[ i ].dataUrl.length )
+                if ( media ) {
+                    for ( i = 0; i < media.length; i++ ) {
+                        count++;
+                        sizes.push( media[ i ].file.size )
+                    }
                 }
-                /*
-                $fileNodes.each( function() {
-                    fileO = {
-                        newName: $( this ).nodeName,
-                        fileName: $( this ).text()
-                    };
-                    fileManager.retrieveFile( instanceID, fileO, {
-                        success: function( fileObj ) {
-                            count++;
-                            if ( fileObj ) {
-                                files.push( fileObj );
-                                sizes.push( fileObj.file.size );
-                            } else {
-                                // Smap allow for file not to be found
-                                failedFiles.push( fileO.fileName );
-                            }
-                            if ( count == $fileNodes.length ) {
-                                distributeFiles();
-                            }
-                        },
-                        error: function( e ) {
-                            count++;
-                            failedFiles.push( fileO.fileName );
-                            console.error( 'Error occured when trying to retrieve ' + fileO.fileName + ' from local filesystem', e );
-                            if ( count == $fileNodes.length ) {
-                                distributeFiles();
-                            }
-                        }
-                    } );
-                    */
+
             }
 
             function distributeFiles() {
                 var maxSize = connection.getMaxSubmissionSize();
-                if ( files.length > 0 ) {
+                if ( record.media.length > 0 ) {
                     batches = divideIntoBatches( sizes, maxSize );
                     console.log( 'splitting record into ' + batches.length + ' batches to reduce submission size ', batches );
                     for ( k = 0; k < batches.length; k++ ) {
                         recordPrepped = basicRecordPrepped( batches.length, k );
                         for ( l = 0; l < batches[ k ].length; l++ ) {
                             fileIndex = batches[ k ][ l ];
-                            recordPrepped.formData.append( files[ fileIndex ].name, files[ fileIndex ].dataUrl );
+                            recordPrepped.formData.append( media[ fileIndex ].name, media[ fileIndex ].file );
                         }
                         callbacks.success( recordPrepped );
                     }
@@ -476,30 +458,12 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     recordPrepped = basicRecordPrepped( 1, 0 );
                     callbacks.success( recordPrepped );
                 }
-                // showErrors();		smap allow files to fail
-            }
 
-            /*
-            function showErrors() {
-                if ( failedFiles.length > 0 ) {
-                    gui.alert( '<p>The following media files could not be retrieved: ' + failedFiles.join( ', ' ) + '. ' +
-                        'The submission will go ahead and show the missing filenames in the data, but without the actual file(s).</p>' +
-                        '<p>Thanks for helping test this experimental feature. If you find out how you can reproduce this issue, ' +
-                        'please contact ' + settings.supportEmail + '.</p>',
-                        'Experimental feature failed' );
-                }
             }
-            */
 
             getFileSizes();
             distributeFiles();
-            /*
-            if ( !fileManager || $fileNodes.length === 0 ) {
-                distributeFiles();
-            } else {
-                gatherFiles();
-            }
-            */
+
         }
 
 
@@ -527,7 +491,11 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     $button.btnBusyState( true );
                     // this timeout is to slow down the GUI a bit, UX
                     setTimeout( function() {
-                        saveRecord();
+                        if ( canSaveRecord() ) {
+                            saveRecord();
+                        } else {
+                            submitEditedRecord( false );
+                        }
                         $button.btnBusyState( false );
                         return false;
                     }, 100 );
@@ -539,7 +507,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     $button.btnBusyState( true );
                     setTimeout( function() {
                         form.validate();
-                        submitEditedRecord();
+                        submitEditedRecord( true );
                         $button.btnBusyState( false );
                         return false;
                     }, 100 );

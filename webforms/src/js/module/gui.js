@@ -377,9 +377,6 @@ define( [ 'Modernizr', 'settings', 'print', 'jquery', 'plugin', ], function( Mod
             }, duration * 1000 );
         }
 
-        /* sample test code (for console):
-         * gui.alert('What did you just do???', 'Obtrusive alert dialog');
-         */
     }
 
     /**

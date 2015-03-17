@@ -98,23 +98,13 @@ module.exports = function( grunt ) {
                     done();
                 }
             },
-            "webform": getWebformCompileOptions(),
-            "webform-edit": getWebformCompileOptions( 'edit' ),
-            "webform-preview": getWebformCompileOptions( 'preview' ),
-            "webform-single": getWebformCompileOptions( 'single' ),
-            "webform-tester": getWebformCompileOptions( 'tester' ),
-            "front": {
-                options: {
-                    name: "../main-front",
-                    out: "public/build/js/front-combined.min.js"
-                }
-            },
-            "formlist": {
-                options: {
-                    name: "../main-formlist",
-                    out: "public/build/js/formlist-combined.min.js"
-                }
-            }
+            "webform": getWebformCompileOptions()
+            //            "front": {
+            //                options: {
+            //                    name: "../main-front",
+            //                    out: "public/build/js/front-combined.min.js"
+            //                }
+            //            }
         },
         symlink: {
             expanded: {
