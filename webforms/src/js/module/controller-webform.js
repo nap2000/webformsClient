@@ -21,37 +21,60 @@
 define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormModel', 'file-saver', 'Blob', 'vkbeautify', 'jquery', 'bootstrap' ],
     function( gui, connection, settings, Form, FormModel, saveAs, Blob, vkbeautify, $ ) {
         "use strict";
-        var form, $form, $formprogress, formSelector, defaultSurveyData, store, fileManager;
+        var form, $form, $formprogress, formSelector, originalSurveyData, store, fileManager;
 
         function init( selector, options ) {
-            var loadErrors, purpose;
+            var loadErrors, purpose, originalUrl, recordName;
 
             //formSelector = selector;
-            defaultSurveyData = {};
-            defaultSurveyData.modelStr = surveyData.modelStr;
+            originalSurveyData = {};
+            originalSurveyData.modelStr = surveyData.modelStr;
 
             options = options || {};
-            surveyData.instanceStrToEdit = surveyData.instanceStrToEdit || null;
+            fileManager = options.fileStore;
             store = options.recordStore || null;
-            fileManager = ( options.fileStore && options.fileStore.isSupported() ) ? options.fileStore : null;
 
-            connection.init( true );
-
-            if ( fileManager && ( !store || store.getRecordList().length === 0 ) ) {
-                //clean up filesystem storage
-                //fileManager.deleteAll();
+            surveyData.instanceStrToEdit = surveyData.instanceStrToEdit || null;
+            var originalUrl = window.location.href.split( "?" );
+            if ( originalUrl.length > 1 ) {
+                // Check to see if we need to load a draft
+                var originalParameters = originalUrl[ 1 ].split( "=" );
+                if ( originalParameters.length > 1 && originalParameters[ 0 ] === "draft" ) {
+                    recordName = decodeURIComponent( originalParameters[ 1 ] );
+                    var record = store.getRecord( recordName );
+                    surveyData.instanceStrToEdit = record.data;
+                }
             }
 
+            // Initialise network connection
+            connection.init( true );
+
+            /*
+             * Initialise file manager if it is supported in this browser
+             * The fileSystems API is used to store images prior to upload when operating offline
+             * This API is only available under Chrome. It is also not being standardised and presumably at
+             * some point it will be replaced, by a future cross browser standard.
+             */
+            if ( fileManager.isFileStorageSupported() ) {
+                fileManager.init();
+                if ( !store || store.getRecordList().length === 0 ) {
+                    fileManager.deleteAll();
+                }
+            }
+
+            // Create the form
             formSelector = 'form.or:eq(0)';
             form = new Form( formSelector, surveyData );
-
-            //initialize form and check for load errors
             var loadErrors = form.init();
+            if ( recordName ) {
+                form.setRecordName( recordName );
+            }
 
             if ( loadErrors.length > 0 ) {
-                console.error( 'load errors:', loadErrors );
-                purpose = ( instanceStrToEdit ) ? 'to edit data' : 'for data entry';
-                gui.showLoadErrors( loadErrors, 'It is recommended <strong>not to use this form</strong> ' + purpose + ' until this is resolved.' );
+                purpose = ( surveyData.instanceStrToEdit ) ? 'to edit data' : 'for data entry';
+                gui.showLoadErrors( loadErrors,
+                    'It is recommended <strong>not to use this form</strong> ' +
+                    purpose + ' until this is resolved.' );
             }
 
             $form = form.getView().$;
@@ -82,19 +105,14 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     submitQueue();
                 }, 5 * 1000 );
             }
-            console.log( 'controls initialized for form', form );
         }
 
         /**
          * Controller function to reset to a blank form. Checks whether all changes have been saved first
          * @param  {boolean=} confirmed Whether unsaved changes can be discarded and lost forever
          */
-
         function resetForm( confirmed ) {
             var message, choices;
-            //valueFirst = /**@type {string} */$('#saved-forms option:first').val();
-            //console.debug('first form is '+valueFirst);
-            //gui.pages.get('records').find('#records-saved').val(valueFirst);
             if ( !confirmed && form.getEditStatus() ) {
                 message = 'There are unsaved changes, would you like to continue <strong>without</strong> saving those?';
                 choices = {
@@ -107,9 +125,8 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                 setDraftStatus( false );
                 updateActiveRecord( null );
                 form.resetView();
-                form = new Form( 'form.or:eq(0)', defaultSurveyData );
-                //DEBUG
-                window.form = form;
+                form = new Form( 'form.or:eq(0)', originalSurveyData );
+                //window.form = form; DEBUG
                 form.init();
                 $form = form.getView().$;
                 $formprogress = $( '.form-progress' );
@@ -117,6 +134,11 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             }
         }
 
+
+
+        /*
+         * Load a record from the list of draft records
+         */
         function loadRecord( recordName, confirmed ) {
             var record, texts, choices, loadErrors;
 
@@ -133,40 +155,44 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                 };
                 gui.confirm( texts, choices );
             } else {
+
+                /*
+                 * Open the form with the saved data
+                 */
                 record = store.getRecord( recordName );
-                //enters that data in the form on the screen
-                // *OLD*checkForOpenForm(true);
                 if ( record && record.data ) {
-                    //var success = form.setData(data);
+                    window.location.replace( record.form + "?draft=" + encodeURIComponent( recordName ) );
+                }
+                /*
+                record = store.getRecord( recordName );
+                if ( record && record.data ) {
                     form.resetView();
-                    //gui.closePage();
-                    form = new Form( formSelector, defaultModelStr, record.data, true );
+                    // Set the saved data as the instance data
+                    originalSurveyData.instanceStrToEdit = record.data;
+                    form = new Form( formSelector, originalSurveyData );
                     loadErrors = form.init();
 
                     if ( loadErrors.length > 0 ) {
-                        console.error( 'load errors:', loadErrors );
                         gui.showLoadErrors( loadErrors, 'It is recommended <strong>not to edit this record</strong> until this is resolved.' );
                     }
                     updateActiveRecord( recordName );
                     setDraftStatus( record.draft );
-                    //Avoid uploading of currently open form by setting edit status in STORE to false. To be re-considered if this is best approach.
-                    //store.setRecordStatus(formName, false);
+                    //store.setRecordStatus(formName, false);      //Avoid uploading of currently open form by setting edit status in STORE to false. To be re-considered if this is best approach.
                     form.setRecordName( recordName );
 
-                    //console.log('displaying loaded form data succes?: '+success); // DEBUG
                     $( '.side-slider-toggle.handle.close' ).click();
                     $( 'button#delete-form' ).button( 'enable' );
-                    //if(!success){
-                    //gui.alert('Error loading form. Saved data may be corrupted');
-                    //}
-                    //else
                     gui.feedback( '"' + recordName + '" has been loaded', 2 );
                 } else {
                     gui.alert( 'Record could not be retrieved or contained no data.' );
                 }
+                */
             }
         }
 
+        /*
+         * Save a record to the Store
+         */
         function saveRecord( recordName, confirmed, error ) {
             var texts, choices, record, saveResult, overwrite,
                 draft = getDraftStatus();
@@ -180,7 +206,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             recordName = recordName || form.getRecordName() || form.getSurveyName() + ' - ' + store.getCounterValue();
 
             if ( !recordName ) {
-                return console.error( 'No record name could be created.' );
+                return console.log( 'No record name could be created.' );
             }
 
             if ( !draft && !form.validate() ) {
@@ -222,8 +248,10 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     'record-name': recordName
                 } );
             } else {
+                var originalUrl = window.location.href.split( "?" );
                 record = {
                     'draft': draft,
+                    'form': originalUrl[ 0 ],
                     'data': form.getDataStr( true, true ),
                     'media': getMedia() // Gets the media from the current form
                 };
@@ -303,16 +331,22 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
         }
 
         /*
-         * Return true if this form can be saved and submitted asynchronously
+         * Return true if this form can be saved and submitted asynchronously. This is possible if either:
+         *   1) The browser supports FileReader and there are no media files in the survey
+         *   2) or, the browser supports FileStorage
          */
         function canSaveRecord() {
-            return false; // TODO check for presence of media and ability to use chrome filesystem API or cordova
+            if ( fileManager.isFileStorageSupported() || ( fileManager.isFileReaderSupported() && getMedia().length === 0 ) ) {
+                console.log( "Can Save record:" );
+                return true;
+            } else {
+                return false;
+            }
+
         }
 
         function submitOneForced( recordName, record ) {
-            // TODO: THIS (force=true) NEEDS TO CHANGE AS IT WOULD BE ANNOYING WHEN ENTERING LOTS OF RECORDS WHILE OFFLINE
-            // as long as it is not possible to open 'final' records, the only thing we need to check is:
-            // whether it is marked as draft (an open record will never be offered for upload)
+
             if ( !record.draft ) {
                 prepareFormDataArray( {
                     key: recordName,
@@ -330,9 +364,6 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
         }
 
         function submitQueue() {
-            //TODO: add second parameter to getSurveyDataArr() to
-            //getCurrentRecordName() to prevent currenty open record from being submitted
-            //connection.uploadRecords(store.getSurveyDataArr(true));
 
             var i,
                 records = store.getSurveyDataArr( true ),
@@ -340,10 +371,13 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     connection.uploadRecords( recordPrepped );
                 },
                 errorHandler = function() {
-                    console.error( 'Something went wrong while trying to prepare the record(s) for uploading.' );
+                    console.log( 'Something went wrong while trying to prepare the record(s) for uploading.' );
                 };
-            ///the check for whether an upload is currently ongoing prevents an ugly-looking issue whereby e.g. #1 in the queue failed to submit
-            //is removed from the queue and then re-entered before the old queue was emptied.
+
+            // reset recordsList with fake save
+            $form.trigger( 'save', JSON.stringify( store.getRecordList() ) );
+            // Clear any errors from recordList
+            $( '.record-list' ).find( 'li' ).removeClass( 'error' );
             if ( !connection.getUploadOngoingID() && connection.getUploadQueue().length === 0 ) {
                 for ( i = 0; i < records.length; i++ ) {
                     prepareFormDataArray(
@@ -412,8 +446,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 
             model = new FormModel( record.data );
             instanceID = model.getInstanceID();
-            // ignore files if there is no fileManager (possible when editing a record that has files)
-            //$fileNodes = ( fileManager ) ? model.$.find( '[type="file"]' ).removeAttr( 'type' ) : [];
+
             xmlData = model.getStr( true, true );
 
             function basicRecordPrepped( batchesLength, batchIndex ) {
@@ -494,6 +527,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                         if ( canSaveRecord() ) {
                             saveRecord();
                         } else {
+                            form.validate();
                             submitEditedRecord( false );
                         }
                         $button.btnBusyState( false );
@@ -580,7 +614,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 
             //remove filesystem folder after successful submission
             $( document ).on( 'submissionsuccess', function( ev, recordName, instanceID ) {
-                if ( fileManager && fileManager.isSupported() ) {
+                if ( fileManager.isFileStorageSupported() ) {
                     fileManager.deleteDir( instanceID );
                 }
                 if ( store ) {
@@ -597,7 +631,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
         }
 
         //update the survey forms names list
-        function updateRecordList( recordList, $page ) {
+        function updateRecordList( recordList ) {
             var name, draft, i, $li,
                 $buttons = $( '.side-slider .upload-records, .side-slider .export-records' ),
                 $list = $( '.side-slider .record-list' );

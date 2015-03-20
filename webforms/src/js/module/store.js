@@ -126,7 +126,6 @@ define( [ 'jquery', 'enketo-js/extend' ], function( $ ) {
         try {
             localStorage.removeItem( key );
             if ( !isReservedKey( key ) ) {
-                //TODO remove this single jQuery dependency
                 $( 'form.or' ).trigger( 'delete', JSON.stringify( getRecordList() ) );
             }
             return true;
@@ -134,6 +133,15 @@ define( [ 'jquery', 'enketo-js/extend' ], function( $ ) {
             console.log( 'error with removing data from store: ' + e.message );
             return false;
         }
+    }
+
+    // Removes all records
+    function removeAllRecords() {
+        var records = getSurveyRecords( false );
+
+        records.forEach( function( record ) {
+            removeRecord( record.key );
+        } );
     }
 
     /**
@@ -163,7 +171,6 @@ define( [ 'jquery', 'enketo-js/extend' ], function( $ ) {
                 'lastSaved': record.lastSaved
             } );
         } );
-        console.debug( 'formList returning:', formList );
 
         //order formList by lastSaved timestamp
         formList.sort( function( a, b ) {

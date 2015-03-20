@@ -115,9 +115,15 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
         callbacks = callbacks || null;
 
         if ( !record.name || !record.instanceID || !record.formData || !record.batches || typeof record.batchIndex == 'undefined' ) {
-            console.error( 'record name, instanceID, formData, batches and/or batchIndex was not defined!', record );
+            console.log( 'record name, instanceID, formData, batches and/or batchIndex was not defined!' );
+            // Slow the reporting of this error down so that the user can see we tried
+            setTimeout( function() {
+                progress._updateClass( progress._getLi( record ), 'error' );
+            }, 200 );
+
             return false;
         }
+
         sameItemInQueue = $.grep( uploadQueue, function( item ) {
             return ( record.instanceID === item.instanceID && record.batchIndex === item.batchIndex );
         } );

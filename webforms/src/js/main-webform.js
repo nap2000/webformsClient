@@ -16,7 +16,6 @@ require( [ 'require-config' ], function( rc ) {
             }
 
             $( document ).ready( function() {
-                surveyData.instanceData = surveyData.instanceData || null; // Existing data
                 controller.init( 'form.or:eq(0)', {
                     recordStore: recordStore,
                     fileStore: fileStore,
