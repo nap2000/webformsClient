@@ -195,9 +195,12 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
          */
         function saveRecord( recordName, confirmed, error ) {
             var texts, choices, record, saveResult, overwrite,
-                draft = getDraftStatus();
+                count = 0,
+                draft = getDraftStatus(),
+                i,
+                media = getMedia();
 
-            console.log( 'saveRecord called with recordname:', recordName, 'confirmed:', confirmed, "error:", error, 'draft:', draft );
+            console.log( 'saveRecord called with recordname:' + recordName, 'confirmed:' + confirmed, "error:" + error + 'draft:' + draft );
 
             //triggering before save to update possible 'end' timestamp in form
             $form.trigger( 'beforesave' );
@@ -206,7 +209,8 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             recordName = recordName || form.getRecordName() || form.getSurveyName() + ' - ' + store.getCounterValue();
 
             if ( !recordName ) {
-                return console.log( 'No record name could be created.' );
+                console.log( 'No record name could be created.' );
+                return;
             }
 
             if ( !draft && !form.validate() ) {
@@ -228,14 +232,14 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                         // if the record is new or
                         // if the record was previously loaded from storage and saved under the same name
                         if ( !form.getRecordName() || form.getRecordName() === values[ 'record-name' ] ) {
-                            saveRecord( values[ 'record-name' ], true );
+                            saveRecord( values[ 'record-name' ], true, error );
                         } else {
                             gui.confirm( {
                                 msg: 'Are you sure you want to rename "' + form.getRecordName() +
                                     '"" to "' + values[ 'record-name' ] + '"?'
                             }, {
                                 posAction: function() {
-                                    saveRecord( values[ 'record-name' ], true );
+                                    saveRecord( values[ 'record-name' ], true, error );
                                 }
                             } );
                         }
@@ -249,33 +253,71 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                 } );
             } else {
                 var originalUrl = window.location.href.split( "?" );
+
+
                 record = {
                     'draft': draft,
                     'form': originalUrl[ 0 ],
-                    'data': form.getDataStr( true, true ),
-                    'media': getMedia() // Gets the media from the current form
+                    'data': form.getDataStr( true, true )
                 };
-                overwrite = form.getRecordName() === recordName;
-                saveResult = store.setRecord( recordName, record, true, overwrite, form.getRecordName() );
 
-                console.log( 'saveResult', saveResult );
-                if ( saveResult === 'success' ) {
-                    resetForm( true );
-                    $form.trigger( 'save', JSON.stringify( store.getRecordList() ) );
+                var model = new FormModel( record.data );
+                var instanceID = model.getInstanceID();
 
-                    if ( draft ) {
-                        gui.feedback( 'Record stored as draft.', 3 );
-                    } else {
-                        //try to send the record immediately
-                        gui.feedback( 'Record queued for submission.', 3 );
-                        submitOneForced( recordName, record );
+                // Save any media   
+                fileManager.createDir( instanceID, {
+                    success: function() {
+                        for ( i = 0; i < media.length; i++ ) {
+                            fileManager.saveFile( media[ i ], {
+                                success: function() {
+                                    count++;
+                                    if ( count === media.length ) {
+                                        saveResult = writeRecord( recordName, record, draft );
+                                    }
+                                },
+                                error: function( e ) {
+                                    console.log( "File Save Error" );
+                                    console.log( e );
+                                    count++;
+                                    if ( count === media.length ) {
+                                        saveResult = writeRecord( recordName, record, draft );
+                                    }
+                                }
+                            }, instanceID );
+                        }
+                    },
+                    error: function() {
+                        console.log( "++++++++ Failed to create directory: " + instanceID );
                     }
-                } else if ( saveResult === 'require' || saveResult === 'existing' || saveResult === 'forbidden' ) {
-                    saveRecord( undefined, false, 'Record name "' + recordName + '" already exists (or is not allowed). The record was not saved.' );
+                } );
+
+            }
+        }
+
+        /*
+         * Write the record
+         */
+        function writeRecord( recordName, record, draft ) {
+
+            var overwrite = form.getRecordName() === recordName;
+            saveResult = store.setRecord( recordName, record, true, overwrite, form.getRecordName() );
+
+            console.log( 'saveResult: ' + saveResult );
+            if ( saveResult === 'success' ) {
+                resetForm( true );
+                $form.trigger( 'save', JSON.stringify( store.getRecordList() ) );
+
+                if ( draft ) {
+                    gui.feedback( 'Record stored as draft.', 3 );
                 } else {
-                    gui.alert( 'Error trying to save data locally (message: ' + saveResult + ')' );
+                    //try to send the record immediately
+                    gui.feedback( 'Record queued for submission.', 3 );
+                    submitOneForced( recordName, record );
                 }
-                return saveResult;
+            } else if ( saveResult === 'require' || saveResult === 'existing' || saveResult === 'forbidden' ) {
+                saveRecord( undefined, false, 'Record name "' + recordName + '" already exists (or is not allowed). The record was not saved.' );
+            } else {
+                gui.alert( 'Error trying to save data locally (message: ' + saveResult + ')' );
             }
         }
 
@@ -294,8 +336,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 
             record = {
                 'key': 'iframe_record',
-                'data': form.getDataStr( true, true ),
-                'media': getMedia()
+                'data': form.getDataStr( true, true )
             };
 
             callbacks = {
@@ -326,7 +367,8 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     error: function() {
                         gui.alert( 'Something went wrong while trying to prepare the record(s) for uploading.', 'Record Error' );
                     }
-                }
+                },
+                true // Use media referenced in browser
             );
         }
 
@@ -349,17 +391,18 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 
             if ( !record.draft ) {
                 prepareFormDataArray( {
-                    key: recordName,
-                    data: record.data,
-                    media: record.media // smap
-                }, {
-                    success: function( formDataArr ) {
-                        connection.uploadRecords( formDataArr, true );
+                        key: recordName,
+                        data: record.data
+                    }, {
+                        success: function( formDataArr ) {
+                            connection.uploadRecords( formDataArr, true );
+                        },
+                        error: function() {
+                            gui.alert( 'Something went wrong while trying to prepare the record(s) for uploading.', 'Record Error' );
+                        }
                     },
-                    error: function() {
-                        gui.alert( 'Something went wrong while trying to prepare the record(s) for uploading.', 'Record Error' );
-                    }
-                } );
+                    false // Use media from file store
+                );
             }
         }
 
@@ -384,7 +427,8 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                         records[ i ], {
                             success: successHandler,
                             error: errorHandler
-                        }
+                        },
+                        false // Use media from storage
                     );
                 }
             }
@@ -437,12 +481,12 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
          * @param { { name: string, data: string } } record[ description ]
          * @param {{success: Function, error: Function}} callbacks
          */
-        function prepareFormDataArray( record, callbacks ) {
+        function prepareFormDataArray( record, callbacks, immediate ) {
             var j, k, l, xmlData, formData, model, instanceID, $fileNodes, fileIndex, fileO, recordPrepped,
                 count = 0,
                 sizes = [],
-                files = [],
-                batches = [];
+                batches = [],
+                media = [];
 
             model = new FormModel( record.data );
             instanceID = model.getInstanceID();
@@ -462,8 +506,9 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             }
 
             function getFileSizes() {
-                var i
-                media = record.media;
+                var i;
+
+                media = getMedia();
 
                 if ( media ) {
                     for ( i = 0; i < media.length; i++ ) {
@@ -474,11 +519,49 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 
             }
 
+            function gatherFiles() {
+
+                $fileNodes = ( fileManager ) ? model.$.find( '[type="file"]' ).removeAttr( 'type' ) : [];
+
+                $fileNodes.each( function() {
+                    fileO = {
+                        newName: $( this ).nodeName,
+                        fileName: $( this ).text()
+                    };
+                    fileManager.retrieveFile( instanceID, fileO, {
+                        success: function( fileObj ) {
+                            count++;
+                            if ( fileObj ) {
+                                media.push( {
+                                    name: fileObj.fileName,
+                                    file: fileObj.file
+                                } );
+                                sizes.push( fileObj.file.size );
+                            } else {
+                                // Smap allow for file not to be found, as we could be be editing an existing record and the image was not replaced
+                                //failedFiles.push( fileO.fileName );
+                            }
+                            if ( count == $fileNodes.length ) {
+                                distributeFiles();
+                            }
+                        },
+                        error: function( e ) {
+                            count++;
+                            //failedFiles.push( fileO.fileName );
+                            console.error( 'Error occured when trying to retrieve ' + fileO.fileName + ' from local filesystem', e );
+                            if ( count == $fileNodes.length ) {
+                                distributeFiles();
+                            }
+                        }
+                    } );
+                } );
+            }
+
             function distributeFiles() {
                 var maxSize = connection.getMaxSubmissionSize();
-                if ( record.media.length > 0 ) {
+                if ( media.length > 0 ) {
                     batches = divideIntoBatches( sizes, maxSize );
-                    console.log( 'splitting record into ' + batches.length + ' batches to reduce submission size ', batches );
+                    console.log( 'splitting record into ' + batches.length + ' batches to reduce submission size ' );
                     for ( k = 0; k < batches.length; k++ ) {
                         recordPrepped = basicRecordPrepped( batches.length, k );
                         for ( l = 0; l < batches[ k ].length; l++ ) {
@@ -494,8 +577,13 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 
             }
 
-            getFileSizes();
-            distributeFiles();
+            if ( immediate ) {
+                getFileSizes();
+                distributeFiles();
+            } else {
+                gatherFiles();
+            }
+
 
         }
 
@@ -606,11 +694,8 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             //$( '#form-controls button' ).toLargestWidth();
 
             $( document ).on( 'save delete', 'form.or', function( e, formList ) {
-                //console.debug( 'save or delete event detected with new formlist: ', formList );
                 updateRecordList( JSON.parse( formList ) );
             } );
-
-            //$( '#dialog-save' ).hide();
 
             //remove filesystem folder after successful submission
             $( document ).on( 'submissionsuccess', function( ev, recordName, instanceID ) {
@@ -620,7 +705,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                 if ( store ) {
                     store.removeRecord( recordName );
                 }
-                console.log( 'After submission success, attempted to remove record with key:', recordName, 'and files in folder:', instanceID );
+                console.log( 'After submission success, attempted to remove record with key:' + recordName + 'and files in folder:' + instanceID );
             } );
 
             $( document ).on( 'progressupdate', 'form.or', function( event, status ) {
@@ -629,6 +714,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                 }
             } );
         }
+
 
         //update the survey forms names list
         function updateRecordList( recordList ) {

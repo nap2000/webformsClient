@@ -138,7 +138,7 @@ Modernizr.opacity;
  * @externs
  */
 
-var console = {};
+//var console = {};
 
 /**
  * @param {...*} var_args
@@ -158,7 +158,7 @@ console.info = function( var_args ) {};
 /**
  * @param {...*} var_args
  */
-console.log = function( var_args ) {};
+//console.log = function( var_args ) {};
 
 /**
  * @param {...*} var_args

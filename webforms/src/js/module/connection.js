@@ -37,8 +37,8 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
         uploadQueue = [];
 
     // Smap Set submission url
-    if ( typeof surveyData.instanceStrToEditId === "undefined" ) {
-        SUBMISSION_URL = "/submission"; // Send submission straight back to the server
+    if ( !surveyData.instanceStrToEditId ) {
+        SUBMISSION_URL = "/submission"; // New record
     } else {
         SUBMISSION_URL = "/submission/" + surveyData.instanceStrToEditId; // Update existing record
     }
@@ -54,9 +54,6 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
         if ( submissions ) {
             _setMaxSubmissionSize();
         }
-        //window.setInterval( function() {
-        //    checkOnlineStatus();
-        //}, 15 * 1000 );
     }
 
     function checkOnlineStatus() {

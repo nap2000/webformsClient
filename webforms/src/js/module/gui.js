@@ -33,20 +33,7 @@ define( [ 'Modernizr', 'settings', 'print', 'jquery', 'plugin', ], function( Mod
         setEventHandlers();
         $( 'footer' ).detach().appendTo( '#container' ); //WTF?
         positionPageAndBar();
-        // avoid windows console errors
-        if ( typeof console == "undefined" ) {
-            console = {
-                log: function() {}
-            };
-        }
-        if ( typeof window.console.debug == "undefined" ) {
-            console.debug = console.log;
-        }
 
-        if ( !settings.debug ) {
-            window.console.log = function() {};
-            window.console.debug = function() {};
-        }
         //override Modernizr's detection (for development purposes)
         if ( settings.touch ) {
             Modernizr.touch = true;
