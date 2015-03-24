@@ -198,6 +198,16 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
             _setOnlineStatus( null );
             $( document ).trigger( 'submissionstart' );
             //console.debug('calbacks: ', callbacks );
+
+            // Set the headers to no-cache to address bug in safari
+            // This fix was sourced from: http://stackoverflow.com/questions/12506897/is-safari-on-ios-6-caching-ajax-results]
+            $.ajaxSetup( {
+                type: 'POST',
+                headers: {
+                    "cache-control": "no-cache"
+                }
+            } );
+
             $.ajax( SUBMISSION_URL, {
                 type: 'POST',
                 data: content,
@@ -205,7 +215,7 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
                 contentType: false,
                 processData: false,
                 //TIMEOUT TO BE TESTED WITH LARGE SIZE PAYLOADS AND SLOW CONNECTIONS...
-                timeout: 300 * 1000,
+                timeout: 800 * 1000,
                 //beforeSend: function(){return false;},
                 complete: function( jqXHR, response ) {
                     uploadOngoingID = null;

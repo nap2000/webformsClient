@@ -264,32 +264,36 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                 var model = new FormModel( record.data );
                 var instanceID = model.getInstanceID();
 
-                // Save any media   
-                fileManager.createDir( instanceID, {
-                    success: function() {
-                        for ( i = 0; i < media.length; i++ ) {
-                            fileManager.saveFile( media[ i ], {
-                                success: function() {
-                                    count++;
-                                    if ( count === media.length ) {
-                                        saveResult = writeRecord( recordName, record, draft );
+                // Save any media  
+                if ( media.length > 0 ) {
+                    fileManager.createDir( instanceID, {
+                        success: function() {
+                            for ( i = 0; i < media.length; i++ ) {
+                                fileManager.saveFile( media[ i ], {
+                                    success: function() {
+                                        count++;
+                                        if ( count === media.length ) {
+                                            saveResult = writeRecord( recordName, record, draft );
+                                        }
+                                    },
+                                    error: function( e ) {
+                                        console.log( "File Save Error" );
+                                        console.log( e );
+                                        count++;
+                                        if ( count === media.length ) {
+                                            saveResult = writeRecord( recordName, record, draft );
+                                        }
                                     }
-                                },
-                                error: function( e ) {
-                                    console.log( "File Save Error" );
-                                    console.log( e );
-                                    count++;
-                                    if ( count === media.length ) {
-                                        saveResult = writeRecord( recordName, record, draft );
-                                    }
-                                }
-                            }, instanceID );
+                                }, instanceID );
+                            }
+                        },
+                        error: function() {
+                            console.log( "++++++++ Failed to create directory: " + instanceID );
                         }
-                    },
-                    error: function() {
-                        console.log( "++++++++ Failed to create directory: " + instanceID );
-                    }
-                } );
+                    } );
+                } else {
+                    saveResult = writeRecord( recordName, record, draft );
+                }
 
             }
         }
@@ -523,38 +527,45 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 
                 $fileNodes = ( fileManager ) ? model.$.find( '[type="file"]' ).removeAttr( 'type' ) : [];
 
-                $fileNodes.each( function() {
-                    fileO = {
-                        newName: $( this ).nodeName,
-                        fileName: $( this ).text()
-                    };
-                    fileManager.retrieveFile( instanceID, fileO, {
-                        success: function( fileObj ) {
-                            count++;
-                            if ( fileObj ) {
-                                media.push( {
-                                    name: fileObj.fileName,
-                                    file: fileObj.file
-                                } );
-                                sizes.push( fileObj.file.size );
-                            } else {
-                                // Smap allow for file not to be found, as we could be be editing an existing record and the image was not replaced
+                if ( $fileNodes.length > 0 ) {
+                    $fileNodes.each( function() {
+
+                        fileO = {
+                            newName: $( this ).nodeName,
+                            fileName: $( this ).text()
+                        };
+
+                        fileManager.retrieveFile( instanceID, fileO, {
+                            success: function( fileObj ) {
+                                count++;
+                                if ( fileObj ) {
+                                    media.push( {
+                                        name: fileObj.fileName,
+                                        file: fileObj.file
+                                    } );
+                                    sizes.push( fileObj.file.size );
+                                } else {
+                                    // Smap allow for file not to be found, as we could be be editing an existing record and the image was not replaced
+                                    //failedFiles.push( fileO.fileName );
+                                }
+                                if ( count == $fileNodes.length ) {
+                                    distributeFiles();
+                                }
+                            },
+                            error: function( e ) {
+                                count++;
                                 //failedFiles.push( fileO.fileName );
+                                console.error( 'Error occured when trying to retrieve ' + fileO.fileName + ' from local filesystem', e );
+                                if ( count == $fileNodes.length ) {
+                                    distributeFiles();
+                                }
                             }
-                            if ( count == $fileNodes.length ) {
-                                distributeFiles();
-                            }
-                        },
-                        error: function( e ) {
-                            count++;
-                            //failedFiles.push( fileO.fileName );
-                            console.error( 'Error occured when trying to retrieve ' + fileO.fileName + ' from local filesystem', e );
-                            if ( count == $fileNodes.length ) {
-                                distributeFiles();
-                            }
-                        }
+                        } );
                     } );
-                } );
+                } else {
+                    recordPrepped = basicRecordPrepped( 1, 0 );
+                    callbacks.success( recordPrepped );
+                }
             }
 
             function distributeFiles() {
@@ -614,6 +625,11 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     setTimeout( function() {
                         if ( canSaveRecord() ) {
                             saveRecord();
+                        } else if ( getDraftStatus() ) {
+                            setDraftStatus( false );
+                            $button.btnBusyState( false );
+                            $button.text( "Submit" );
+                            gui.alert( 'Your browser does not support saving media files' );
                         } else {
                             form.validate();
                             submitEditedRecord( false );
