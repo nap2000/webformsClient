@@ -461,56 +461,8 @@ define( [ 'Modernizr', 'settings', 'print', 'jquery', 'plugin', ], function( Mod
             }, duration * 1000 );
         }
 
-        /* sample test code (for console):
-
-		gui.confirm({
-			msg: 'This is an obtrusive confirmation dialog asking you to make a decision',
-			heading: 'Please confirm this action',
-			errorMsg: 'Oh man, you messed up big time!'
-		},{
-			posButton: 'Confirmeer',
-			negButton: 'Annuleer',
-			posAction: function(){console.log('you just did something positive!')},
-			negAction: function(){console.log('you did something negative')},
-			beforeAction: function(){console.log('doing some preparatory work')}
-		})
-
-		gui.confirm('confirm this please');
-
-	 */
     }
 
-
-
-    /**
-     * Shows modal asking for confirmation to redirect to login screen
-     * @param  {string=} msg       message to show
-     * @param  {string=} serverURL serverURL for which authentication is required
-     */
-    function confirmLogin( msg, serverURL ) {
-        msg = msg || '<p>In order to submit your queued data, you need to login. If you want to do this now, you will be redirected,' +
-            ' and loose unsaved information.</p><p>Would you like to login now or later?</p>';
-        serverURL = serverURL || settings.serverURL;
-
-        confirm( {
-            msg: msg,
-            heading: 'Login Required'
-        }, {
-            posButton: 'Log in now',
-            negButton: 'Later',
-            posAction: function() {
-                var search = '?server=' + encodeURIComponent( serverURL ) + '&return=' + encodeURIComponent( location.href );
-                search += ( settings.formId ) ? '&id=' + settings.formId : '';
-                search += ( settings.touch ) ? '&touch=' + settings.touch : '';
-                search += ( settings.debug ) ? '&debug=' + settings.debug : '';
-                location.href = location.protocol + '//' + location.host + '/authenticate' + search;
-            },
-            negAction: function() {
-                console.log( 'login cancelled' );
-            },
-            beforeAction: function() {}
-        } );
-    }
 
     /**
      * Shows modal with load errors
@@ -679,7 +631,6 @@ define( [ 'Modernizr', 'settings', 'print', 'jquery', 'plugin', ], function( Mod
         updateStatus: updateStatus,
         pages: pages,
         fillHeight: fillHeight,
-        confirmLogin: confirmLogin,
         showLoadErrors: showLoadErrors,
         showCacheUnsupported: showCacheUnsupported,
         parseFormlist: parseFormlist

@@ -34,13 +34,18 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
             fail: []
         },
         uploadBatchesResult = {},
-        uploadQueue = [];
+        uploadQueue = [],
+        dynamic = "";
 
     // Smap Set submission url
+    if ( surveyData.key ) {
+        dynamic = "/key/" + surveyData.key;
+    }
+
     if ( !surveyData.instanceStrToEditId ) {
-        SUBMISSION_URL = "/submission"; // New record
+        SUBMISSION_URL = "/submission" + dynamic; // New record
     } else {
-        SUBMISSION_URL = "/submission/" + surveyData.instanceStrToEditId; // Update existing record
+        SUBMISSION_URL = "/submission" + dynamic + "/" + surveyData.instanceStrToEditId; // Update existing record
     }
 
     //init();
@@ -201,12 +206,12 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
 
             // Set the headers to no-cache to address bug in safari
             // This fix was sourced from: http://stackoverflow.com/questions/12506897/is-safari-on-ios-6-caching-ajax-results]
-            $.ajaxSetup( {
-                type: 'POST',
-                headers: {
-                    "cache-control": "no-cache"
-                }
-            } );
+            //$.ajaxSetup( {
+            //    type: 'POST',
+            //    headers: {
+            //        "cache-control": "no-cache"
+            //    }
+            //} );
 
             $.ajax( SUBMISSION_URL, {
                 type: 'POST',
@@ -399,10 +404,6 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
             } else if ( statusMap[ status ].success === false ) {
                 uploadResult.fail.push( props );
             }
-        } else if ( status == 401 ) {
-            props.msg = 'Authentication Required.';
-            _cancelSubmissionProcess();
-            gui.confirmLogin();
         }
         //unforeseen statuscodes
         else if ( status > 500 ) {
