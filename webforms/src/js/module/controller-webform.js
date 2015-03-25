@@ -450,29 +450,20 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                 $filePicker,
                 name,
                 dataUrl,
-                mediaArray = [];
+                mediaArray = [],
+                filename;
 
             $( '[type="file"]' ).each( function() {
                 $media = $( this );
                 elem = $media[ 0 ];
 
                 for ( i = 0; i < elem.files.length; i++ ) {
+                    filename = elem.files[ i ].name;
                     mediaArray.push( {
-                        name: elem.files[ i ].name,
+                        name: filename,
                         file: elem.files[ i ]
                     } );
                 }
-                /*
-                $filePicker = $media.next( '.file-picker' );
-                $ff = $filePicker.find( '.fake-file-input' );
-                $fp = $filePicker.find( '.file-preview > img' );
-                if ( $ff && $fp && $fp.attr( "src" ) ) {
-                    mediaArray.push( {
-                        name: $ff.text(),
-                        dataUrl: $fp.attr( "src" )
-                    } );
-                }
-                */
             } );
 
             console.log( "Returning media" );
@@ -496,6 +487,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             instanceID = model.getInstanceID();
 
             xmlData = model.getStr( true, true );
+            xmlData = _fixIosMediaNames( xmlData ); // ios names all media image.jpg, Make each name unique
 
             function basicRecordPrepped( batchesLength, batchIndex ) {
                 formData = new FormData();
@@ -523,6 +515,27 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 
             }
 
+            function _fixIosMediaNames( xmlData ) {
+                var xml = $.parseXML( xmlData ),
+                    $xml,
+                    imageCount = 0;
+
+                $xml = $( xml );
+                $xml.find( 'image' ).each( function() {
+                    var $this = $( this ),
+                        name;
+                    name = $this.text();
+                    if ( name === "image.jpg" ) {
+                        name = "image_" + imageCount + ".jpg";
+                        $this.text( name );
+                        imageCount++;
+                    }
+                } );
+
+                return ( new XMLSerializer() ).serializeToString( xml );
+
+            }
+
             function gatherFiles() {
 
                 $fileNodes = ( fileManager ) ? model.$.find( '[type="file"]' ).removeAttr( 'type' ) : [];
@@ -539,8 +552,9 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                             success: function( fileObj ) {
                                 count++;
                                 if ( fileObj ) {
+                                    filename = fileObj.fileName;
                                     media.push( {
-                                        name: fileObj.fileName,
+                                        name: filename,
                                         file: fileObj.file
                                     } );
                                     sizes.push( fileObj.file.size );
