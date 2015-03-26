@@ -271,12 +271,10 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     'data': form.getDataStr( true, true )
                 };
 
-                var model = new FormModel( record.data );
-                var instanceID = model.getInstanceID();
 
                 // Save any media  
                 if ( media.length > 0 ) {
-                    fileManager.createDir( instanceID, {
+                    fileManager.createDir( gLoadedInstanceID, {
                         success: function() {
                             for ( i = 0; i < media.length; i++ ) {
                                 fileManager.saveFile( media[ i ], {
@@ -294,7 +292,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                                             saveResult = writeRecord( recordName, record, draft );
                                         }
                                     }
-                                }, instanceID );
+                                }, gLoadedInstanceID );
                             }
                         },
                         error: function() {
@@ -487,14 +485,13 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
          * @param {{success: Function, error: Function}} callbacks
          */
         function prepareFormDataArray( record, callbacks, immediate ) {
-            var j, k, l, xmlData, formData, model, instanceID, $fileNodes, fileIndex, fileO, recordPrepped,
+            var j, k, l, xmlData, formData, model, $fileNodes, fileIndex, fileO, recordPrepped,
                 count = 0,
                 sizes = [],
                 batches = [],
                 media = [];
 
             model = new FormModel( record.data );
-            instanceID = model.getInstanceID();
 
             xmlData = model.getStr( true, true );
             xmlData = _fixIosMediaNames( xmlData ); // ios names all media image.jpg, Make each name unique
@@ -504,7 +501,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                 formData.append( 'xml_submission_data', xmlData );
                 return {
                     name: record.key,
-                    instanceID: instanceID,
+                    instanceID: gLoadedInstanceID,
                     formData: formData,
                     batches: batchesLength,
                     batchIndex: batchIndex
@@ -570,7 +567,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                             fileName: $( this ).text()
                         };
 
-                        fileManager.retrieveFile( instanceID, fileO, {
+                        fileManager.retrieveFile( gLoadedInstanceID, fileO, {
                             success: function( fileObj ) {
                                 count++;
                                 if ( fileObj ) {
