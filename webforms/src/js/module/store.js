@@ -103,6 +103,18 @@ define( [ 'jquery', 'enketo-js/extend' ], function( $ ) {
         }
     }
 
+    function setKey( key, value ) {
+       
+        localStorage.setItem( key, JSON.stringify( value) );         
+       
+    }
+    
+    function delKey( key ) {
+        
+        localStorage.setItem( key, JSON.stringify( value) );         
+       
+    }
+
 
     /**
      * Returns a form data record as an object. This is the only function that obtains records from the local storage.
@@ -303,6 +315,7 @@ define( [ 'jquery', 'enketo-js/extend' ], function( $ ) {
         getExportStr: getExportStr,
         getSurveyRecords: getSurveyRecords,
         getSurveyDataArr: getSurveyDataArr,
-        getCounterValue: getCounterValue
+        getCounterValue: getCounterValue,
+        setKey : setKey
     };
 } );

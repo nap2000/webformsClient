@@ -35,6 +35,26 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             store = options.recordStore || null;
 
             surveyData.instanceStrToEdit = surveyData.instanceStrToEdit || null;
+            
+            // Open an existing record if we need to
+            if(fileManager.isFileReaderSupported()) {
+	            var recordName = store.getRecord( "draft" );
+	            if(recordName) {
+	            	var record = store.getRecord( recordName );
+	                surveyData.instanceStrToEdit = record.data;
+	                
+	                // Set the global instanceID of the restored form so that filePicker can find media
+	                var model = new FormModel( record.data );
+	                window.gLoadedInstanceID = model.getInstanceID();
+	                
+	                // Delete the draft key
+	                store.removeRecord("draft");
+	            } else {
+	            	window.gLoadedInstanceID = undefined;
+	            }
+            }
+            
+            /*
             var originalUrl = window.location.href.split( "?" );
             if ( originalUrl.length > 1 ) {
                 // Check to see if we need to load a draft
@@ -51,6 +71,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             } else {
             	window.gLoadedInstanceID = undefined;
             }
+            */
             
 
             // Initialise network connection
@@ -171,7 +192,9 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                  */
                 record = store.getRecord( recordName );
                 if ( record && record.data ) {
-                    window.location.replace( record.form + "?draft=" + encodeURIComponent( recordName ) );
+                	store.setKey("draft", recordName);
+                    //window.location.replace( record.form + "?draft=" + encodeURIComponent( recordName ) );
+                    window.location.replace( record.form) ;
                 }
                 /*
                 record = store.getRecord( recordName );
