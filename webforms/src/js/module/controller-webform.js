@@ -43,8 +43,15 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     recordName = decodeURIComponent( originalParameters[ 1 ] );
                     var record = store.getRecord( recordName );
                     surveyData.instanceStrToEdit = record.data;
+                    
+                    // Set the global instanceID of the restored form so that filePicker can find media
+                    var model = new FormModel( record.data );
+                    window.gLoadedInstanceID = model.getInstanceID();
                 }
+            } else {
+            	window.gLoadedInstanceID = undefined;
             }
+            
 
             // Initialise network connection
             connection.init( true );
@@ -66,6 +73,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             formSelector = 'form.or:eq(0)';
             form = new Form( formSelector, surveyData );
             var loadErrors = form.init();
+
             if ( recordName ) {
                 form.setRecordName( recordName );
             }
@@ -89,8 +97,10 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     '(even if you turn off your computer or go offline).</p>' +
                     '<progress class="upload-progress"></progress>' +
                     '<ul class="record-list"></ul>' +
-                    '<div class="button-bar"><button class="btn btn-default export-records">Export</button>' +
-                    '<button class="btn btn-primary pull-right upload-records">Upload</button></div>' +
+                    '<div class="button-bar">' +
+                    //'<button class="btn btn-default export-records">Export</button>' +
+                    '<button class="btn btn-primary upload-records">Upload</button>' +		// remove pull-right while export is disabled
+                    '</div>' +
                     '<p>Queued records, except those marked as <em>draft</em> ( <span class="glyphicon glyphicon-pencil"></span> ), ' +
                     'are uploaded <strong>automatically</strong>, in the background, every 5 minutes when the web page is open ' +
                     'and an Internet connection is available. To force an upload in between automatic attempts, click Upload.</p>' );
@@ -515,13 +525,20 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 
             }
 
+            /*
+             * IOS 4 (at least) sets all images to a name of image.jpg and all videos to a name of capturedvideo.mov
+             * This function makes the reference to these names unique, however it does not change the file name.
+             * The files are sent to the server with their duplicate names, the server then applies the same 
+             * logic as here to set the name of the file on the server
+             */
             function _fixIosMediaNames( xmlData ) {
                 var xml = $.parseXML( xmlData ),
                     $xml,
-                    imageCount = 0;
+                    imageCount = 0,
+                    videoCount = 0;
 
                 $xml = $( xml );
-                $xml.find( 'image' ).each( function() {
+                $xml.find( '[type="file"]' ).each( function() {
                     var $this = $( this ),
                         name;
                     name = $this.text();
@@ -529,6 +546,11 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                         name = "image_" + imageCount + ".jpg";
                         $this.text( name );
                         imageCount++;
+                    }
+                    if ( name === "capturedvideo.MOV" ) {
+                        name = "capturedvideo_" + videoCount + ".MOV";
+                        $this.text( name );
+                        videoCount++;
                     }
                 } );
 
