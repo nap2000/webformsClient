@@ -53,26 +53,6 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 	            	window.gLoadedInstanceID = undefined;
 	            }
             }
-            
-            /*
-            var originalUrl = window.location.href.split( "?" );
-            if ( originalUrl.length > 1 ) {
-                // Check to see if we need to load a draft
-                var originalParameters = originalUrl[ 1 ].split( "=" );
-                if ( originalParameters.length > 1 && originalParameters[ 0 ] === "draft" ) {
-                    recordName = decodeURIComponent( originalParameters[ 1 ] );
-                    var record = store.getRecord( recordName );
-                    surveyData.instanceStrToEdit = record.data;
-                    
-                    // Set the global instanceID of the restored form so that filePicker can find media
-                    var model = new FormModel( record.data );
-                    window.gLoadedInstanceID = model.getInstanceID();
-                }
-            } else {
-            	window.gLoadedInstanceID = undefined;
-            }
-            */
-            
 
             // Initialise network connection
             connection.init( true );
@@ -165,8 +145,6 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             }
         }
 
-
-
         /*
          * Load a record from the list of draft records
          */
@@ -196,30 +174,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     //window.location.replace( record.form + "?draft=" + encodeURIComponent( recordName ) );
                     window.location.replace( record.form) ;
                 }
-                /*
-                record = store.getRecord( recordName );
-                if ( record && record.data ) {
-                    form.resetView();
-                    // Set the saved data as the instance data
-                    originalSurveyData.instanceStrToEdit = record.data;
-                    form = new Form( formSelector, originalSurveyData );
-                    loadErrors = form.init();
 
-                    if ( loadErrors.length > 0 ) {
-                        gui.showLoadErrors( loadErrors, 'It is recommended <strong>not to edit this record</strong> until this is resolved.' );
-                    }
-                    updateActiveRecord( recordName );
-                    setDraftStatus( record.draft );
-                    //store.setRecordStatus(formName, false);      //Avoid uploading of currently open form by setting edit status in STORE to false. To be re-considered if this is best approach.
-                    form.setRecordName( recordName );
-
-                    $( '.side-slider-toggle.handle.close' ).click();
-                    $( 'button#delete-form' ).button( 'enable' );
-                    gui.feedback( '"' + recordName + '" has been loaded', 2 );
-                } else {
-                    gui.alert( 'Record could not be retrieved or contained no data.' );
-                }
-                */
             }
         }
 
@@ -413,6 +368,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
          *   2) or, the browser supports FileStorage
          */
         function canSaveRecord() {
+        	
             if ( fileManager.isFileStorageSupported() || ( fileManager.isFileReaderSupported() && getMedia().length === 0 ) ) {
                 console.log( "Can Save record:" );
                 return true;
@@ -524,7 +480,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                 formData.append( 'xml_submission_data', xmlData );
                 return {
                     name: record.key,
-                    instanceID: gLoadedInstanceID,
+                    instanceID: model.getInstanceID(),		// Use the instance ID that is built into the form
                     formData: formData,
                     batches: batchesLength,
                     batchIndex: batchIndex
