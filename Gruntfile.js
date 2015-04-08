@@ -178,5 +178,5 @@ module.exports = function( grunt ) {
     grunt.registerTask( "compile", [ "symlink", "requirejs" ] );
     grunt.registerTask( 'server', [ 'connect:server:keepalive' ] );
     // grunt.registerTask( "default", [ "jsbeautifier:fix", "symlink", "style", "compile" ] );
-    grunt.registerTask( "default", [ "requirejs" ] );
+    grunt.registerTask( "default", [ "symlink", "requirejs" ] );
 };
