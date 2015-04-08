@@ -534,7 +534,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 
             }
 
-            function gatherFiles() {
+            function gatherFiles(directory) {
 
                 $fileNodes = ( fileManager ) ? model.$.find( '[type="file"]' ).removeAttr( 'type' ) : [];
 
@@ -546,7 +546,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                             fileName: $( this ).text()
                         };
 
-                        fileManager.retrieveFile( gLoadedInstanceID, fileO, {
+                        fileManager.retrieveFile( directory, fileO, {
                             success: function( fileObj ) {
                                 count++;
                                 if ( fileObj ) {
@@ -604,7 +604,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                 getFileSizes();
                 distributeFiles();
             } else {
-                gatherFiles();
+                gatherFiles(model.getInstanceID());
             }
 
 
