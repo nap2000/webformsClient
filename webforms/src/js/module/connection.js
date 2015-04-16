@@ -22,11 +22,8 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
     "use strict";
     var oRosaHelper, progress, maxSubmissionSize,
         that = this,
-        CONNECTION_URL = '/webforms/checkforconnection.php',
-        GETSURVEYURL_URL = '/api_v1/survey',
         SUBMISSION_URL,
-        //this.SUBMISSION_TRIES = 2;
-        currentOnlineStatus = true, // smap set to true from null
+        currentOnlineStatus = true,
         uploadOngoingID = null,
         uploadOngoingBatchIndex = null,
         uploadResult = {
@@ -34,62 +31,40 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
             fail: []
         },
         uploadBatchesResult = {},
-        uploadQueue = [],
-        dynamic = "";
+        uploadQueue = []
 
-    // Smap Set submission url
-    if ( surveyData.key ) {
-        dynamic = "/key/" + surveyData.key;
-    }
-
-    if ( !surveyData.instanceStrToEditId ) {
-        SUBMISSION_URL = "/submission" + dynamic; // New record
-    } else {
-        SUBMISSION_URL = "/submission" + dynamic + "/" + surveyData.instanceStrToEditId; // Update existing record
-    }
-
-    //init();
+    setSubmissionUrl(surveyData.key);
 
     /**
      * Initialize the connection object
      * @param  { boolean=} submissions whether or not to prepare the connection object to deal with submissions
      */
     function init( submissions ) {
-        //checkOnlineStatus();		smap no need to check for online status - submission will do that
         if ( submissions ) {
             _setMaxSubmissionSize();
         }
     }
 
-    function checkOnlineStatus() {
-        var online;
-        //console.log('checking connection status');
-        //navigator.onLine is totally unreliable (returns incorrect trues) on Firefox, Chrome, Safari (on OS X 10.8),
-        //but I assume falses are correct
-        if ( navigator.onLine ) {
-            if ( !uploadOngoingID ) {
-                $.ajax( {
-                    type: 'GET',
-                    url: CONNECTION_URL,
-                    cache: false,
-                    dataType: 'json',
-                    timeout: 3000,
-                    complete: function( response ) {
-                        //important to check for the content of the no-cache response as it will
-                        //start receiving the fallback page specified in the manifest!
-                        online = typeof response.responseText !== 'undefined' && response.responseText === 'connected';
-                        _setOnlineStatus( online );
-                    }
-                } );
-            }
+    /*
+     * Set the submission URL
+     * This can change during the life of the form if the access key needs to be updated
+     */
+    function setSubmissionUrl(key) {
+
+    	var dynamic = "";
+        if ( key ) {
+            dynamic = "/key/" + key;
+        }
+
+        if ( !surveyData.instanceStrToEditId ) {
+            SUBMISSION_URL = "/submission" + dynamic; // New record
         } else {
-            _setOnlineStatus( false );
+            SUBMISSION_URL = "/submission" + dynamic + "/" + surveyData.instanceStrToEditId; // Update existing record
         }
     }
-
+    
     function _setOnlineStatus( newStatus ) {
-        //var oldStatus = onlineStatus;
-        //onlineStatus = online;
+      
         if ( newStatus !== currentOnlineStatus ) {
             console.log( 'online status changed to: ' + newStatus + ', triggering window.onlinestatuschange' );
             $( window ).trigger( 'onlinestatuschange', newStatus );
@@ -104,6 +79,24 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
         uploadQueue = [];
     }
 
+    function getNewKey() {
+		$.ajax({
+			url: '/surveyKPI/login/key?form=user',		// Get a generic user key
+			dataType: 'json',
+			cache: false,
+			success: function(data) {
+				setSubmissionUrl(data.key);
+			},
+			error: function(xhr, textStatus, err) {
+				removeHourglass();
+				if(xhr.readyState == 0 || xhr.status == 0) {
+		              return;  // Not an error
+				} else {
+					alert("Error: Failed to get access key: " + err);
+				}
+			}
+		});	
+    }
     /**
      * [uploadRecords description]
      * @param  {{name: string, instanceID: string, formData: FormData, batches: number, batchIndex: number}}    record   [description]
@@ -156,7 +149,7 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
      * Uploads a record from the queue
      * @param  {Object.<string, Function>=} callbacks [description]
      */
-    function _uploadOne( callbacks ) { //dataXMLStr, name, last){
+    function _uploadOne( callbacks ) { 
         var record, content, last, props;
 
         callbacks = ( typeof callbacks === 'undefined' || !callbacks ) ? {
@@ -179,10 +172,8 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
                 _uploadOne();
             },
             error: function( jqXHR, textStatus ) {
-                if ( textStatus === 'timeout' ) {
-                    console.debug( 'submission request timed out' );
-                } else {
-                    console.error( 'error during submission, textStatus:', textStatus );
+                if(jqXHR.status == 401) {
+                	getNewKey();		// Get a new access key
                 }
             },
             success: function() {}
@@ -190,28 +181,17 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
 
         if ( uploadQueue.length > 0 ) {
             record = uploadQueue.shift();
+            
             progress.update( record, 'ongoing', '' );
-            //if ( currentOnlineStatus === false ) {		// Just do it! smap
-            //    _processOpenRosaResponse( 0, record );
-            //} else {
+            
             uploadOngoingID = record.instanceID;
             uploadOngoingBatchIndex = record.batchIndex;
             content = record.formData;
             content.append( 'Date', new Date().toUTCString() );
             console.debug( 'prepared to send: ', content );
-            //last = (this.uploadQueue.length === 0) ? true : false;
+
             _setOnlineStatus( null );
             $( document ).trigger( 'submissionstart' );
-            //console.debug('calbacks: ', callbacks );
-
-            // Set the headers to no-cache to address bug in safari
-            // This fix was sourced from: http://stackoverflow.com/questions/12506897/is-safari-on-ios-6-caching-ajax-results]
-            //$.ajaxSetup( {
-            //    type: 'POST',
-            //    headers: {
-            //        "cache-control": "no-cache"
-            //    }
-            //} );
 
             $.ajax( SUBMISSION_URL, {
                 type: 'POST',
@@ -219,9 +199,7 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
                 cache: false,
                 contentType: false,
                 processData: false,
-                //TIMEOUT TO BE TESTED WITH LARGE SIZE PAYLOADS AND SLOW CONNECTIONS...
                 timeout: 800 * 1000,
-                //beforeSend: function(){return false;},
                 complete: function( jqXHR, response ) {
                     uploadOngoingID = null;
                     uploadOngoingBatchIndex = null;
@@ -230,10 +208,10 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
                 error: callbacks.error,
                 success: callbacks.success
             } );
-            //}
+ 
         }
     }
-
+    
     progress = {
 
         _getLi: function( record ) {
@@ -517,102 +495,6 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
         } );
     }
 
-    function getSurveyURL( serverURL, formId, callbacks ) {
-        callbacks = _getCallbacks( callbacks );
-
-        if ( !serverURL || !isValidURL( serverURL ) ) {
-            callbacks.error( null, 'validationerror', 'not a valid server URL' );
-            return;
-        }
-        if ( !formId || formId.length === 0 ) {
-            callbacks.error( null, 'validationerror', 'not a valid formId' );
-            return;
-        }
-        $.ajax( {
-            url: GETSURVEYURL_URL,
-            type: 'POST',
-            data: {
-                server_url: serverURL,
-                form_id: formId
-            },
-            cache: false,
-            timeout: 60 * 1000,
-            dataType: 'json',
-            success: callbacks.success,
-            error: callbacks.error,
-            complete: callbacks.complete
-        } );
-    }
-
-    /**
-     * Obtains HTML Form from an XML file or from a server url and form id
-     * @param  {?string=}                   serverURL   full server URL
-     * @param  {?string=}                   formId      form ID
-     * @param  {Blob=}                      formFile    XForm XML file
-     * @param  {?string=}                   formURL     XForm URL
-     * @param  {Object.<string, Function>=} callbacks   callbacks
-     */
-    function getTransForm( serverURL, formId, formFile, formURL, callbacks ) {
-        var formData = new FormData();
-
-        callbacks = _getCallbacks( callbacks );
-        serverURL = serverURL || null;
-        formId = formId || null;
-        formURL = formURL || null;
-        formFile = formFile || new Blob();
-
-        if ( formFile.size === 0 && ( !serverURL || !formId ) && !formURL ) {
-            callbacks.error( null, 'validationerror', 'No form file or URLs provided' );
-            return;
-        }
-        if ( formFile.size === 0 && !isValidURL( serverURL ) && !isValidURL( formURL ) ) {
-            callbacks.error( null, 'validationerror', 'Not a valid server or form url' );
-            return;
-        }
-        if ( formFile.size === 0 && !formURL && ( !formId || formId.length === 0 ) ) {
-            callbacks.error( null, 'validationerror', 'No form id provided' );
-            return;
-        }
-        //don't append if null, as FF turns null into 'null'
-        if ( serverURL ) formData.append( 'server_url', serverURL );
-        if ( formId ) formData.append( 'form_id', formId );
-        if ( formURL ) formData.append( 'form_url', formURL );
-        if ( formFile ) formData.append( 'xml_file', formFile );
-
-        console.debug( 'form file: ', formFile );
-
-        $.ajax( '/transform/get_html_form', {
-            type: 'POST',
-            cache: false,
-            contentType: false,
-            processData: false,
-            dataType: 'xml',
-            data: formData,
-            success: callbacks.success,
-            error: callbacks.error,
-            complete: callbacks.complete
-        } );
-    }
-
-    function validateHTML( htmlStr, callbacks ) {
-        var content = new FormData();
-
-        callbacks = _getCallbacks( callbacks );
-
-        content.append( 'level', 'error' );
-        content.append( 'content', htmlStr );
-
-        $.ajax( '/html5validate/', {
-            type: 'POST',
-            data: content,
-            contentType: false,
-            processData: false,
-            success: callbacks.success,
-            error: callbacks.error,
-            complete: callbacks.complete
-        } );
-    }
-
     /**
      * Collection of helper functions for openRosa connectivity
      * @param {*} conn [description]
@@ -703,13 +585,10 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
     return {
         init: init,
         uploadRecords: uploadRecords,
-        getTransForm: getTransForm,
         getUploadQueue: getUploadQueue,
         getUploadOngoingID: getUploadOngoingID,
-        validateHTML: validateHTML,
         getFormlist: getFormlist,
         isValidURL: isValidURL,
-        getSurveyURL: getSurveyURL,
         getMaxSubmissionSize: getMaxSubmissionSize,
         oRosaHelper: oRosaHelper,
         // "private" but used for tests:
