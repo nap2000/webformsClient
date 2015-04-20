@@ -22,6 +22,7 @@ require.config( {
         "Blob": "../../lib/blob/Blob",
         "vkbeautify": "../../lib/vkbeautify/vkbeautify",
         "leaflet": "../../lib/enketo-core/lib/leaflet/leaflet"
+
     },
     shim: {
         "xpath": {
