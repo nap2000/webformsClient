@@ -83,8 +83,8 @@ module.exports = function( grunt ) {
                 mainConfigFile: "webforms/src/js/require-build-config.js",
                 findNestedDependencies: true,
                 include: [ 'core-lib/require' ],
-                //optimize: "uglify2",
-                optimize: "none",
+                optimize: "uglify2",
+                //optimize: "none",
                 done: function( done, output ) {
                     var duplicates = require( 'rjs-build-analysis' ).duplicates( output );
 
