@@ -21,6 +21,7 @@
 define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store, $ ) {
     "use strict";
     var oRosaHelper, progress, maxSubmissionSize,
+        gStore,
         that = this,
         SUBMISSION_URL,
         currentOnlineStatus = true,
@@ -33,22 +34,24 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
         uploadBatchesResult = {},
         uploadQueue = []
 
-    setSubmissionUrl(surveyData.key);
+    //setSubmissionUrl(surveyData.key);	// d1404 key is specific to a survey and should be obtained from the data record
 
     /**
      * Initialize the connection object
      * @param  { boolean=} submissions whether or not to prepare the connection object to deal with submissions
      */
-    function init( submissions ) {
+    function init( submissions, store ) {
         if ( submissions ) {
             _setMaxSubmissionSize();
         }
+        gStore = store;
     }
 
     /*
      * Set the submission URL
      * This can change during the life of the form if the access key needs to be updated
-     */
+     * deprecated
+     *
     function setSubmissionUrl(key) {
 
     	var dynamic = "";
@@ -61,6 +64,34 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
         } else {
             SUBMISSION_URL = "/submission" + dynamic + "/" + surveyData.instanceStrToEditId; // Update existing record
         }
+        if(surveyData.assignmentId) {
+        	SUBMISSION_URL += "?assignment_id=" + surveyData.assignmentId;
+        }
+    }
+    */
+    
+    /*
+     * Get the submission url for this record
+     */
+    function getSubmissionUrl(record) {
+
+    	var dynamic = "",
+    		url;
+    	
+        if ( record.accessKey ) {
+            dynamic = "/key/" + record.accessKey;
+        }
+
+        if ( !record.instanceStrToEditId ) {
+            url = "/submission" + dynamic; // New record
+        } else {
+            url = "/submission" + dynamic + "/" + record.instanceStrToEditId; // Update existing record
+        }
+        if(record.assignmentId) {
+        	url += "?assignment_id=" + record.assignmentId;
+        }
+        
+        return url;
     }
     
     function _setOnlineStatus( newStatus ) {
@@ -79,13 +110,27 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
         uploadQueue = [];
     }
 
-    function getNewKey() {
+    /*
+     * Get a new key and update the record
+     */
+    function getNewKey(record) {
 		$.ajax({
 			url: '/surveyKPI/login/key?form=user',		// Get a generic user key
 			dataType: 'json',
 			cache: false,
 			success: function(data) {
-				setSubmissionUrl(data.key);
+				// TODO update the record
+				if(record.name == 'iframe_record') {
+					// Update the web page access key
+					surveyData.key = data.key;
+				} else {
+					// Update the access key in the stored record
+					var dbRecord = store.getRecord( record.name );
+					dbRecord.accessKey = data.key;
+					gStore.setRecord( record.name, dbRecord, true, true, dbRecord.key );
+				}
+				// TODO update the surveyData in the form if this is an immediate submit
+				// setSubmissionUrl(data.key);
 			},
 			error: function(xhr, textStatus, err) {
 				removeHourglass();
@@ -102,9 +147,10 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
      * @param  {{name: string, instanceID: string, formData: FormData, batches: number, batchIndex: number}}    record   [description]
      * @param  {boolean=}                                                   force     [description]
      * @param  {Object.<string, Function>=}                             callbacks only used for testing
+     * @param {boolean} 												close after sending
      * @return {boolean}           [description]
      */
-    function uploadRecords( record, force, callbacks ) {
+    function uploadRecords( record, force, callbacks, autoClose ) {
         var sameItemInQueue, sameItemSubmitted, sameItemOngoing;
         force = force || false;
         callbacks = callbacks || null;
@@ -133,7 +179,7 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
             if ( !uploadOngoingID ) {
                 _resetUploadResult();
                 uploadBatchesResult = {};
-                _uploadOne( callbacks );
+                _uploadOne( callbacks, autoClose );
             }
         }
         //override force property
@@ -149,7 +195,7 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
      * Uploads a record from the queue
      * @param  {Object.<string, Function>=} callbacks [description]
      */
-    function _uploadOne( callbacks ) { 
+    function _uploadOne( callbacks, autoClose ) { 
         var record, content, last, props;
 
         callbacks = ( typeof callbacks === 'undefined' || !callbacks ) ? {
@@ -169,12 +215,11 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
                  * as it duplicates 1 entry and omits the other but returns 201 for both...
                  * so we wait for the previous POST to finish before sending the next
                  */
-                _uploadOne();
+                var autoCloseVal = autoClose && (jqXHR.status == 201);
+                _uploadOne(undefined, autoCloseVal);
             },
             error: function( jqXHR, textStatus ) {
-                if(jqXHR.status == 401) {
-                	getNewKey();		// Get a new access key
-                }
+                
             },
             success: function() {}
         } : callbacks;
@@ -187,13 +232,16 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
             uploadOngoingID = record.instanceID;
             uploadOngoingBatchIndex = record.batchIndex;
             content = record.formData;
-            content.append( 'Date', new Date().toUTCString() );
-            console.debug( 'prepared to send: ', content );
+            if(typeof content.append === "function") {
+            	content.append( 'Date', new Date().toUTCString() );
+            	console.debug( 'prepared to send: ', content );
+            }
 
             _setOnlineStatus( null );
             $( document ).trigger( 'submissionstart' );
 
-            $.ajax( SUBMISSION_URL, {
+            var url = getSubmissionUrl(record);		// Get the url for this record
+            $.ajax( url, {
                 type: 'POST',
                 data: content,
                 cache: false,
@@ -205,10 +253,23 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
                     uploadOngoingBatchIndex = null;
                     callbacks.complete( jqXHR, response );
                 },
-                error: callbacks.error,
+                error: function(jqXHR, response) {
+                	var recordInError = record;
+                	if(jqXHR.status == 401) {
+                    	getNewKey(recordInError);		// Get a new access key
+                    }
+                	callbacks.error();
+                },
                 success: callbacks.success
             } );
  
+        } else {
+        	if ( autoClose ) {
+        		 gui.alert( 'This form will now be closed!', 'Submission Successful!', 'success' );
+                 setTimeout( function() {
+                     window.open( '', '_self' ).close();
+                 }, 3500 );
+        	}
         }
     }
     
@@ -302,7 +363,7 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
             level = 'error',
             contactSupport = 'Contact ' + settings[ 'supportEmail' ] + ' please.',
             contactAdmin = 'Contact the survey administrator please.',
-            serverDown = 'Sorry, the data server for your form or the Enketo server is down. Please try again later or contact ' + settings[ 'supportEmail' ] + ' please.',
+            serverDown = 'Sorry, the server is not available. Please try again later or contact your administrator.',
             statusMap = {
                 0: {
                     success: false,

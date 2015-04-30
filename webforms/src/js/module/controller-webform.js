@@ -38,10 +38,14 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             
             // Open an existing record if we need to
             if(fileManager.isFileReaderSupported()) {
-	            var recordName = store.getRecord( "draft" );
+	            var recordName = store.getRecord( "draft" );	// Draft identifies the name of a draft record that is being opened
 	            if(recordName) {
+	            	
 	            	var record = store.getRecord( recordName );
 	                surveyData.instanceStrToEdit = record.data;
+	                surveyData.instanceStrToEditId = record.instanceStrToEditId; // d1504
+	                surveyData.assignmentId = record.assignmentId;				 // d1504
+	                surveyData.key = record.accessKey;							 // d1504	
 	                
 	                // Set the global instanceID of the restored form so that filePicker can find media
 	                var model = new FormModel( record.data );
@@ -55,7 +59,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             }
 
             // Initialise network connection
-            connection.init( true );
+            connection.init( true, store );
 
             /*
              * Initialise file manager if it is supported in this browser
@@ -171,7 +175,6 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                 record = store.getRecord( recordName );
                 if ( record && record.data ) {
                 	store.setKey("draft", recordName);
-                    //window.location.replace( record.form + "?draft=" + encodeURIComponent( recordName ) );
                     window.location.replace( record.form) ;
                 }
 
@@ -242,11 +245,14 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             } else {
                 var originalUrl = window.location.href.split( "?" );
 
-
                 record = {
                     'draft': draft,
                     'form': originalUrl[ 0 ],
-                    'data': form.getDataStr( true, true )
+                    'data': form.getDataStr( true, true ),
+                    'instanceStrToEditId': surveyData.instanceStrToEditId,  		// d1504
+                	'assignmentId': surveyData.assignmentId,				 		// d1504
+                	'accessKey': surveyData.key										// d1504
+                    
                 };
 
 
@@ -326,7 +332,10 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 
             record = {
                 'key': 'iframe_record',
-                'data': form.getDataStr( true, true )
+                'data': form.getDataStr( true, true ),
+                'instanceStrToEditId': surveyData.instanceStrToEditId,  // d1504
+            	'assignmentId': surveyData.assignmentId,				 // d1504
+            	'accessKey': surveyData.key								 // d1504
             };
 
             callbacks = {
@@ -334,25 +343,17 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     gui.alert( 'Please try submitting again.', 'Submission Failed' );
                 },
                 success: function() {
-                    if ( autoClose ) {
-                        gui.alert( 'This form will now be closed!', 'Submission Successful!', 'success' );
-                        setTimeout( function() {
-                            window.open( '', '_self' ).close();
-                        }, 1500 );
-                    } else {
-                        resetForm( true );
-                        gui.alert( 'Success', 'Submission Successful!', 'success' );
-                    }
+                	resetForm( true );
+                    gui.alert( 'Success', 'Submission Successful!', 'success' );
                 },
                 complete: function() {}
             };
 
-            //connection.uploadRecords(record, true, callbacks);
             //only upload the last one
             prepareFormDataArray(
                 record, {
                     success: function( formDataArr ) {
-                        connection.uploadRecords( formDataArr, true, callbacks );
+                        connection.uploadRecords( formDataArr, true, callbacks, closeAfterSending());
                     },
                     error: function() {
                         gui.alert( 'Something went wrong while trying to prepare the record(s) for uploading.', 'Record Error' );
@@ -362,6 +363,22 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             );
         }
 
+        /*
+         * Return true if the web page should be closed after the results are sent. This should happen when:
+         *   1) The web page has an assignmentId, that is it was loaded by clicking a task
+         *   2) or, the web page has an instanceStrToEdit, that is it contained initial data from another survey
+         */
+        function closeAfterSending() {
+        	
+            if ( surveyData.instanceStrToEdit || surveyData.assignmentId ) {
+                console.log( "Close after saving" );
+                return true;
+            } else {
+                return false;
+            }
+
+        }
+        
         /*
          * Return true if this form can be saved and submitted asynchronously. This is possible if either:
          *   1) The browser supports FileReader and there are no media files in the survey
@@ -383,10 +400,12 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             if ( !record.draft ) {
                 prepareFormDataArray( {
                         key: recordName,
-                        data: record.data
+                        data: record.data,
+                        assignmentId: record.assignmentId,				 // d1504
+                    	accessKey: record.accessKey						 // d1504
                     }, {
                         success: function( formDataArr ) {
-                            connection.uploadRecords( formDataArr, true );
+                            connection.uploadRecords( formDataArr, true, undefined, closeAfterSending() );		// d1504 add closeAfterSending
                         },
                         error: function() {
                             gui.alert( 'Something went wrong while trying to prepare the record(s) for uploading.', 'Record Error' );
@@ -402,7 +421,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             var i,
                 records = store.getSurveyDataArr( true ),
                 successHandler = function( recordPrepped ) {
-                    connection.uploadRecords( recordPrepped );
+                    connection.uploadRecords( recordPrepped, false, undefined, false);		// d1504 do not close after sending as this is a background job
                 },
                 errorHandler = function() {
                     console.log( 'Something went wrong while trying to prepare the record(s) for uploading.' );
@@ -470,20 +489,29 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                 batches = [],
                 media = [];
 
-            model = new FormModel( record.data );
-
-            xmlData = model.getStr( true, true );
-            xmlData = _fixIosMediaNames( xmlData ); // ios names all media image.jpg, Make each name unique
+            if(record.data) {
+            	model = new FormModel( record.data );
+            	xmlData = model.getStr( true, true );
+            	xmlData = _fixIosMediaNames( xmlData ); // ios names all media image.jpg, Make each name unique
+            } else {
+            	callbacks.success( record );	// d1504 existing record from record store all pre-prepared 
+            }
 
             function basicRecordPrepped( batchesLength, batchIndex ) {
-                formData = new FormData();
-                formData.append( 'xml_submission_data', xmlData );
+            	if(xmlData) {
+            		formData = new FormData();
+            		formData.append( 'xml_submission_data', xmlData );
+            	} else {
+            		formData = record.formData;
+            	}
                 return {
                     name: record.key,
                     instanceID: model.getInstanceID(),		// Use the instance ID that is built into the form
                     formData: formData,
                     batches: batchesLength,
-                    batchIndex: batchIndex
+                    batchIndex: batchIndex,
+                    assignmentId: record.assignmentId,				 // d1504
+                	accessKey: record.accessKey						 // d1504
                 };
             }
 
@@ -603,7 +631,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             if ( immediate ) {
                 getFileSizes();
                 distributeFiles();
-            } else {
+            } else if (model) {
                 gatherFiles(model.getInstanceID());
             }
 
@@ -644,7 +672,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                             gui.alert( 'Your browser does not support saving media files' );
                         } else {
                             form.validate();
-                            submitEditedRecord( false );
+                            submitEditedRecord( closeAfterSending() );
                         }
                         $button.btnBusyState( false );
                         return false;
