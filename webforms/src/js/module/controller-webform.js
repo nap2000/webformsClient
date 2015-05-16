@@ -501,6 +501,9 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             	if(xmlData) {
             		formData = new FormData();
             		formData.append( 'xml_submission_data', xmlData );
+            		if(record.assignmentId) {
+            			formData.append( 'assignment_id', record.assignmentId);
+            		}
             	} else {
             		formData = record.formData;
             	}

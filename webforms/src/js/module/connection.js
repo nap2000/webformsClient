@@ -87,9 +87,9 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
         } else {
             url = "/submission" + dynamic + "/" + record.instanceStrToEditId; // Update existing record
         }
-        if(record.assignmentId) {
-        	url += "?assignment_id=" + record.assignmentId;
-        }
+        //if(record.assignmentId) {
+        //	url += "?assignment_id=" + record.assignmentId;
+        //}
         
         return url;
     }
