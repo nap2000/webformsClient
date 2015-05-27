@@ -184,13 +184,14 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
         /*
          * Save a record to the Store
          */
-        function saveRecord( recordName, confirmed, error ) {
+        function saveRecord( recordName, confirmed, error, draft ) {
             var texts, choices, record, saveResult, overwrite,
                 count = 0,
-                draft = getDraftStatus(),
                 i,
-                media = getMedia();
+                media = getMedia(),
+                recordResult = {};
 
+            draft = draft || getDraftStatus();
             console.log( 'saveRecord called with recordname:' + recordName, 'confirmed:' + confirmed, "error:" + error + 'draft:' + draft );
 
             //triggering before save to update possible 'end' timestamp in form
@@ -251,8 +252,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     'data': form.getDataStr( true, true ),
                     'instanceStrToEditId': surveyData.instanceStrToEditId,  		// d1504
                 	'assignmentId': surveyData.assignmentId,				 		// d1504
-                	'accessKey': surveyData.key										// d1504
-                    
+                	'accessKey': surveyData.key										// d1504                 
                 };
 
 
@@ -286,8 +286,10 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                 } else {
                     saveResult = writeRecord( recordName, record, draft );
                 }
-
             }
+            
+            recordResult.key = recordName;
+            return recordResult;
         }
 
         /*
@@ -532,39 +534,6 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 
             }
 
-            /*
-             * IOS 4 (at least) sets all images to a name of image.jpg and all videos to a name of capturedvideo.mov
-             * This function makes the reference to these names unique, however it does not change the file name.
-             * The files are sent to the server with their duplicate names, the server then applies the same 
-             * logic as here to set the name of the file on the server
-             */
-            function _fixIosMediaNames( xmlData ) {
-                var xml = $.parseXML( xmlData ),
-                    $xml,
-                    imageCount = 0,
-                    videoCount = 0;
-
-                $xml = $( xml );
-                $xml.find( '[type="file"]' ).each( function() {
-                    var $this = $( this ),
-                        name;
-                    name = $this.text();
-                    if ( name === "image.jpg" ) {
-                        name = "image_" + imageCount + ".jpg";
-                        $this.text( name );
-                        imageCount++;
-                    }
-                    if ( name === "capturedvideo.MOV" ) {
-                        name = "capturedvideo_" + videoCount + ".MOV";
-                        $this.text( name );
-                        videoCount++;
-                    }
-                } );
-
-                return ( new XMLSerializer() ).serializeToString( xml );
-
-            }
-
             function gatherFiles(directory) {
 
                 $fileNodes = ( fileManager ) ? model.$.find( '[type="file"]' ).removeAttr( 'type' ) : [];
@@ -641,6 +610,38 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 
         }
 
+        /*
+         * IOS 4 (at least) sets all images to a name of image.jpg and all videos to a name of capturedvideo.mov
+         * This function makes the reference to these names unique, however it does not change the file name.
+         * The files are sent to the server with their duplicate names, the server then applies the same 
+         * logic as here to set the name of the file on the server
+         */
+        function _fixIosMediaNames( xmlData ) {
+            var xml = $.parseXML( xmlData ),
+                $xml,
+                imageCount = 0,
+                videoCount = 0;
+
+            $xml = $( xml );
+            $xml.find( '[type="file"]' ).each( function() {
+                var $this = $( this ),
+                    name;
+                name = $this.text();
+                if ( name === "image.jpg" ) {
+                    name = "image_" + imageCount + ".jpg";
+                    $this.text( name );
+                    imageCount++;
+                }
+                if ( name === "capturedvideo.MOV" ) {
+                    name = "capturedvideo_" + videoCount + ".MOV";
+                    $this.text( name );
+                    videoCount++;
+                }
+            } );
+
+            return ( new XMLSerializer() ).serializeToString( xml );
+
+        }
 
         /**
          * Function to export or backup data to a file. In Chrome it will get an appropriate file name.
@@ -895,8 +896,21 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             return batches;
         }
 
+        function validate() {
+        	return form.validate();
+        }
+        
+        function getXmlData() {
+    
+        	return form.getDataStr( true, true );
+
+        }
+        
         return {
             init: init,
+            saveRecord: saveRecord,
+            validate: validate,
+            getXmlData: getXmlData,
             submitQueue: submitQueue,
             divideIntoBatches: divideIntoBatches
         };

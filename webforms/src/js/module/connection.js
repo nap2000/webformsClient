@@ -47,28 +47,6 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
         gStore = store;
     }
 
-    /*
-     * Set the submission URL
-     * This can change during the life of the form if the access key needs to be updated
-     * deprecated
-     *
-    function setSubmissionUrl(key) {
-
-    	var dynamic = "";
-        if ( key ) {
-            dynamic = "/key/" + key;
-        }
-
-        if ( !surveyData.instanceStrToEditId ) {
-            SUBMISSION_URL = "/submission" + dynamic; // New record
-        } else {
-            SUBMISSION_URL = "/submission" + dynamic + "/" + surveyData.instanceStrToEditId; // Update existing record
-        }
-        if(surveyData.assignmentId) {
-        	SUBMISSION_URL += "?assignment_id=" + surveyData.assignmentId;
-        }
-    }
-    */
     
     /*
      * Get the submission url for this record
