@@ -896,14 +896,47 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             return batches;
         }
 
+        /*
+         * Functions to access Enketo Core without using WebForms wrapper
+         */
         function validate() {
         	return form.validate();
         }
         
-        function getXmlData() {
-    
+        function getXmlData() {   
         	return form.getDataStr( true, true );
+        }
+        
+        /*
+         * Initialise the form without starting webforms connection or record store
+         */
+        function initialiseForm( recordName ) {
+            var loadErrors, 
+            	purpose;
+            
+            window.gLoadedInstanceID = undefined;
+            
+            // Create the form
+            form = new Form( 'form.or:eq(0)', surveyData );			// form is global
+            loadErrors = form.init();
 
+            if ( recordName ) {
+                form.setRecordName( recordName );
+            }
+
+            if ( loadErrors.length > 0 ) {
+                purpose = ( surveyData.instanceStrToEdit ) ? 'to edit data' : 'for data entry';
+                gui.showLoadErrors( loadErrors,
+                    'It is recommended <strong>not to use this form</strong> ' +
+                    purpose + ' until this is resolved.' );
+            }
+
+            $form = form.getView().$;
+            $formprogress = $( '.form-progress' );
+
+            setEventHandlers();
+        
+           
         }
         
         return {
@@ -911,6 +944,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             saveRecord: saveRecord,
             validate: validate,
             getXmlData: getXmlData,
+            initialiseForm: initialiseForm,
             submitQueue: submitQueue,
             divideIntoBatches: divideIntoBatches
         };
