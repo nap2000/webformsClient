@@ -20,7 +20,7 @@ require( [ 'require-config' ], function( rc ) {
         
 	        $( document ).ready( function() {
 	        	
-	        	window.webForms = controller; 		// Make controller global so it can be called by cordova app
+	        	window.enketo = controller; 		// Make controller global so it can be called by cordova app
 	           
 	        	//FastClick.attach(document.body);		// Add FastClick to reduce delay on ios
 	            
