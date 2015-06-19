@@ -94,7 +94,9 @@ define( [ 'gui', 'jquery', 'connection' ], function( gui, $, connection ) {
      * Checks for manifest changes which would trigger an applicationCache update
      */
     function update() {
-        window.applicationCache.update();
+    	if(!window.cordova) {
+    		window.applicationCache.update();
+    	}
     }
 
     /**

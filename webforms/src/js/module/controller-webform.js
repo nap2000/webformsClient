@@ -21,7 +21,7 @@
 define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormModel', 'file-saver', 'Blob', 'vkbeautify', 'jquery', 'bootstrap' ],
     function( gui, connection, settings, Form, FormModel, saveAs, Blob, vkbeautify, $ ) {
         "use strict";
-        var form, $form, $formprogress, formSelector, originalSurveyData, store, fileManager;
+        var form, $form, $formprogress, formSelector, originalSurveyData, store, fileManager, startEditData;
 
         function init( selector, options ) {
             var loadErrors, purpose, originalUrl, recordName;
@@ -935,8 +935,37 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             $formprogress = $( '.form-progress' );
 
             setEventHandlers();
+            
+            // Save current data so we can check if there have been changes
+            startEditData = form.getDataStr( true, true );
         
            
+        }
+        
+        // Reset the start point (presumably after the data has been saved)
+        function resetStartPoint() {
+        	startEditData = form.getDataStr( true, true );
+        }
+        
+        // Return true if the data has changed
+        function hasChanged() {
+        	if(typeof form !== "undefined") {
+        		var latestData = form.getDataStr( true, true );
+        		return (startEditData != latestData);
+        	} else {
+        		// return false as something has gone wrong with this form and the user should be able to exit (should be prevented from happening)
+        		return false;
+        	}
+        }
+        
+        // Get the instance name
+        function getInstanceName() {
+        	if(typeof form !== "undefined") {
+        		return form.getInstanceName();
+        	} else {
+        		// return false as something has gone wrong with this form and the user should be able to exit (should be prevented from happening)
+        		return "unknown";
+        	}
         }
         
         return {
@@ -945,6 +974,9 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             validate: validate,
             getXmlData: getXmlData,
             initialiseForm: initialiseForm,
+            getInstanceName: getInstanceName,
+            hasChanged: hasChanged,
+            resetStartPoint: resetStartPoint,
             submitQueue: submitQueue,
             divideIntoBatches: divideIntoBatches
         };
