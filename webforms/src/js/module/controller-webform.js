@@ -404,6 +404,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                         key: recordName,
                         data: record.data,
                         assignmentId: record.assignmentId,				 // d1504
+                        instanceStrToEditId: record.instanceStrToEditId, // d1505
                     	accessKey: record.accessKey						 // d1504
                     }, {
                         success: function( formDataArr ) {
@@ -515,8 +516,9 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                     formData: formData,
                     batches: batchesLength,
                     batchIndex: batchIndex,
-                    assignmentId: record.assignmentId,				 // d1504
-                	accessKey: record.accessKey						 // d1504
+                    assignmentId: record.assignmentId,				 	// d1504
+                    instanceStrToEditId: record.instanceStrToEditId,	// d1505
+                	accessKey: record.accessKey						 	// d1504
                 };
             }
 
