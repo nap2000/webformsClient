@@ -26,6 +26,15 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
         function init( selector, options ) {
             var loadErrors, purpose, originalUrl, recordName;
 
+        	/*
+        	 * Add check prior to the user leaving the screen
+        	 */
+        	window.onbeforeunload = function() {
+        		if(hasChanged()) {
+        			return "You have unsaved changes. Are you sure you want to leave?";
+        		}
+        	};
+        	
             //formSelector = selector;
             originalSurveyData = {};
             originalSurveyData.modelStr = surveyData.modelStr;
@@ -95,6 +104,9 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
 
             setEventHandlers();
 
+            // Save current data so we can check if there have been changes
+            startEditData = form.getDataStr( true, true );
+            
             if ( store ) {
                 $( '.side-slider' ).append(
                     '<h3>Queue</h3>' +
