@@ -939,10 +939,11 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             }
 
             if ( loadErrors.length > 0 ) {
-                purpose = ( surveyData.instanceStrToEdit ) ? 'to edit data' : 'for data entry';
-                gui.showLoadErrors( loadErrors,
-                    'It is recommended <strong>not to use this form</strong> ' +
-                    purpose + ' until this is resolved.' );
+            	alert(loadErrors.join(','));
+                //purpose = ( surveyData.instanceStrToEdit ) ? 'to edit data' : 'for data entry';
+                //gui.showLoadErrors( loadErrors,
+                //    'It is recommended <strong>not to use this form</strong> ' +
+                //    purpose + ' until this is resolved.' );
             }
 
             $form = form.getView().$;
