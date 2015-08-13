@@ -924,7 +924,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
         /*
          * Initialise the form without starting webforms connection or record store
          */
-        function initialiseForm( recordName ) {
+        function initialiseForm( recordName, initAsChanged ) {
             var loadErrors, 
             	purpose;
             
@@ -952,7 +952,11 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             setEventHandlers();
             
             // Save current data so we can check if there have been changes
-            startEditData = form.getDataStr( true, true );
+            if(initAsChanged) {
+            	startEditData = "";		// hasChanged will return true immediately
+            } else {
+            	startEditData = form.getDataStr( true, true );
+            }
         
            
         }
