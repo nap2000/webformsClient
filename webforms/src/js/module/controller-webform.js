@@ -924,7 +924,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
         /*
          * Initialise the form without starting webforms connection or record store
          */
-        function initialiseForm( recordName, initAsChanged ) {
+        function initialiseForm( recordName, setAsChanged ) {
             var loadErrors, 
             	purpose;
             
@@ -952,7 +952,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             setEventHandlers();
             
             // Save current data so we can check if there have been changes
-            if(initAsChanged) {
+            if(setAsChanged) {
             	startEditData = "";		// hasChanged will return true immediately
             } else {
             	startEditData = form.getDataStr( true, true );
@@ -987,6 +987,29 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
         	}
         }
         
+        // Get the languages used by the form
+        function getLanguages() {
+        	var resp = {
+        			defLang: $( '#form-languages' ).data( 'default-lang' ),
+        			languages: []
+        	};
+        	
+        	$( '#form-languages' ).find('option').each(function(index) {
+        		var $this = $(this);
+        		resp.languages.push({
+        			value: $this.val(),
+        			name: $this.html()
+        			}); 
+        	});
+        	
+        	return resp;
+        }
+        
+        // Set the current language
+        function setLanguage(lang) {
+        	form.getView().langs.setAll(lang);
+        }
+        
         return {
             init: init,
             saveRecord: saveRecord,
@@ -997,6 +1020,8 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             hasChanged: hasChanged,
             resetStartPoint: resetStartPoint,
             submitQueue: submitQueue,
+            getLanguages: getLanguages,
+            setLanguage: setLanguage,
             divideIntoBatches: divideIntoBatches
         };
     } );
