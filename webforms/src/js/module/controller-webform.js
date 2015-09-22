@@ -913,11 +913,18 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
         /*
          * Functions to access Enketo Core without using WebForms wrapper
          */
-        function validate() {
-        	return form.validate();
+        function finalise() {
+        	var $form = form.getView().$;
+        	$form.trigger( 'beforesave' );
+        	$(':focus').trigger( 'blur');
+        	form.validate();
         }
         
-        function getXmlData() {   
+        function validate() {
+        	return form.isValid();
+        }
+        
+        function getXmlData() { 
         	return form.getDataStr( true, true );
         }
         
@@ -1014,6 +1021,7 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             init: init,
             saveRecord: saveRecord,
             validate: validate,
+            finalise: finalise,
             getXmlData: getXmlData,
             initialiseForm: initialiseForm,
             getInstanceName: getInstanceName,
