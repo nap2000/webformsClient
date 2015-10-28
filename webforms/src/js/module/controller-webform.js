@@ -1017,6 +1017,16 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
         	form.getView().langs.setAll(lang);
         }
         
+        // Goto next page
+        function nextPage() {
+        	form.getView().pages.next();
+        }
+        
+        // Goto prev page
+        function prevPage() {
+        	form.getView().pages.prev();
+        }
+        
         return {
             init: init,
             saveRecord: saveRecord,
@@ -1030,6 +1040,8 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
             submitQueue: submitQueue,
             getLanguages: getLanguages,
             setLanguage: setLanguage,
+            nextPage: nextPage,
+            prevPage: prevPage,
             divideIntoBatches: divideIntoBatches
         };
     } );
