@@ -345,7 +345,7 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
             statusMap = {
                 0: {
                     success: false,
-                    msg: ( typeof jrDataStrToEdit !== 'undefined' ) ? "Failed (offline?). Please try again." : "Failed (offline?)."
+                    msg: "Failed (offline?). The browser will retry to send when back online. Please do not close this page."
                 },
                 200: {
                     success: false,
@@ -397,11 +397,16 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
                 }
             };
 
-        console.debug( 'submission results with status: ' + status + ' for ', props );
+        //console.debug( 'submission results with status: ' + status + ' for ', props );
 
         batchText = ( props.batches > 1 ) ? ' (batch #' + ( props.batchIndex + 1 ) + ' out of ' + props.batches + ')' : '';
         props.batchText = batchText;
 
+        // Smap Set online status to false if the error failed due to an inability to connect
+        if ( status === 0 ) {	
+            _setOnlineStatus( false );
+        }
+        
         if ( typeof statusMap[ status ] !== 'undefined' ) {
             props.msg = statusMap[ status ].msg;
             if ( statusMap[ status ].success === true ) {
@@ -480,9 +485,9 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
                 // not sure if there should be any notification if forms fail automatic submission when offline
             }
 
-            if ( status === 0 ) {
-                _setOnlineStatus( false );
-            }
+            //if ( status === 0 ) {				smap
+            //    _setOnlineStatus( false );
+            //}
         }
     }
 
