@@ -158,6 +158,9 @@ define( [ 'gui', 'connection', 'settings', 'enketo-js/Form', 'enketo-js/FormMode
                 $form = form.getView().$;
                 $formprogress = $( '.form-progress' );
                 $( 'button#delete-form' ).button( 'disable' );
+                
+                // smap save the initial starting point
+                startEditData = form.getDataStr( true, true );
             }
         }
 

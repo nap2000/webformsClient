@@ -201,6 +201,21 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
             },
             success: function() {}
         } : callbacks;
+        
+        // smap make sure the complete function is set (override complete past from calling program)
+        callbacks.complete = function( jqXHR, response ) {
+        	$( document ).trigger( 'submissioncomplete' );
+        	_processOpenRosaResponse( jqXHR.status,
+        			props = {
+	                name: record.name,
+	                instanceID: record.instanceID,
+	                batches: record.batches,
+	                batchIndex: record.batchIndex,
+	                forced: record.forced
+	            } );
+        	 var autoCloseVal = autoClose && (jqXHR.status == 201);
+             _uploadOne(undefined, autoCloseVal);
+        }
 
         if ( uploadQueue.length > 0 ) {
             record = uploadQueue.shift();
