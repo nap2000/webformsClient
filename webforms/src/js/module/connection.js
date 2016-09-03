@@ -382,6 +382,10 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
                     success: false,
                     msg: "Data server did not accept data. " + contactAdmin
                 },
+                401: {
+                    success: false,
+                    msg: "Authorisation expired. Refresh your browser and logon again. " 
+                },
                 403: {
                     success: false,
                     msg: "Not allowed to post data to this data server. " + contactAdmin
