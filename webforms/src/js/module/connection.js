@@ -384,7 +384,7 @@ define( [ 'gui', 'settings', 'store', 'jquery' ], function( gui, settings, store
                 },
                 401: {
                     success: false,
-                    msg: "Authorisation expired. Refresh your browser and logon again. " 
+                    msg: "Authorisation expired. Refresh your browser. " 
                 },
                 403: {
                     success: false,
