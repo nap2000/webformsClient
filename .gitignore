@@ -3,7 +3,6 @@ webforms/src/lib/*
 node_modules/*
 lib/*
 src/*
-public/*
 .grunt/*
 .Gruntfile*
 .DS_store
