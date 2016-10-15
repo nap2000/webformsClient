@@ -208,14 +208,16 @@ define( [ 'jquery', 'enketo-js/extend' ], function( $ ) {
             key = localStorage.key( i );
             if ( !isReservedKey( key ) ) {
 
-                // get record - all non-reserved keys contain survey data
+                // get record - 
                 record = getRecord( key );
 
                 try {
                     record.key = key;
                     //=== true comparison breaks in Google Closure compiler.
                     if ( key !== excludeName && ( !finalOnly || !record.draft ) ) {
-                        records.push( record );
+                    	if(record.form) {		// If there is a form then this should be record data (Smap)
+                    		records.push( record );
+                    	}
                     }
                 } catch ( e ) {
                     console.log( 'record found that was probably not in the expected JSON format' +
