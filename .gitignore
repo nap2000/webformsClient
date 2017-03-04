@@ -1,6 +1,7 @@
 .sass-cache
 webforms/src/lib/*
 node_modules/*
+public/build/*
 lib/*
 src/*
 .grunt/*
